@@ -96,7 +96,7 @@ public class CsvImporter {
                 // Add to state.bays
                 int aisleNum = Integer.parseInt(aisleId);
                 Location loc = new Location(warehouseId, aisleNum, bayNumber);
-                BayMeta meta = new BayMeta(warehouseId, aisleNum, bayNumber, capacity);
+                BayMeta meta = new BayMeta(warehouseId, aisleId, bayNumber, capacity);
                 state.bays.put(loc, meta);
             }
         } catch (IOException e) {

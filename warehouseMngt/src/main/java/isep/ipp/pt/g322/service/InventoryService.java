@@ -114,4 +114,36 @@ public class InventoryService {
         state.boxById.remove(boxId);
         insertBoxFEFO(b);           // volta a inserir e repõe boxById + skuToBays (para o novo bay)
     }
+
+    //US05
+
+    public InventoryService.InventoryState getState() {
+        return state;
+    }
+
+    public Location findAvailableLocationForSKU(String sku) {
+        NavigableMap<Integer, List<Location>> skuBays = state.skuToBays.get(sku);
+        if (skuBays != null) {
+            for (Map.Entry<Integer, List<Location>> entry : skuBays.entrySet()) {
+                for (Location loc : entry.getValue()) {
+                    BayMeta meta = state.bays.get(loc);
+                    NavigableSet<Box> boxes = state.bayBoxes.getOrDefault(loc, new TreeSet<>(FEFO));
+                    if (boxes.size() < meta.getCapacityBoxes()) {
+                        return loc;
+                    }
+                }
+            }
+        }
+
+        for (Map.Entry<Location, BayMeta> entry : state.bays.entrySet()) {
+            Location location = entry.getKey();
+            BayMeta bayMeta = entry.getValue();
+            NavigableSet<Box> boxes = state.bayBoxes.getOrDefault(location, new TreeSet<>(FEFO));
+            if (boxes.size() < bayMeta.getCapacityBoxes()) {
+                return location;
+            }
+        }
+
+        throw new IllegalStateException("No available bay with capacity for SKU: " + sku);
+    }
 }

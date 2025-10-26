@@ -140,4 +140,104 @@ public class InventoryServiceTest {
         IllegalStateException ex = assertThrows(IllegalStateException.class, () -> service.insertBoxFEFO(c2));
         assertTrue(ex.getMessage().contains("capacity"), "Mensagem deve indicar excesso de capacidade");
     }
+
+    @Test
+    void findAvailableLocationForSKU_returnsExistingBayWithSameSKU() {
+        // Setup: L10 has SKU-A with space (capacity 5, only 2 boxes)
+        Box b1 = box("B1", "SKU-A", 10, "2025-10-01", "2025-09-20T09:00:00");
+        Box b2 = box("B2", "SKU-A", 10, "2025-10-02", "2025-09-20T10:00:00");
+        service.setBoxLocation("B1", L10);
+        service.setBoxLocation("B2", L10);
+        service.insertBoxFEFO(b1);
+        service.insertBoxFEFO(b2);
+
+        // L11 is empty
+        Location result = service.findAvailableLocationForSKU("SKU-A");
+
+        assertEquals(L10, result, "Should return bay that already contains the SKU");
+    }
+
+    @Test
+    void findAvailableLocationForSKU_returnsEmptyBayWhenSKUBaysFull() {
+        // Setup: L10 has SKU-A at full capacity (5 boxes)
+        for (int i = 1; i <= 5; i++) {
+            Box b = box("B" + i, "SKU-A", 10, "2025-10-01", "2025-09-20T09:00:00");
+            service.setBoxLocation("B" + i, L10);
+            service.insertBoxFEFO(b);
+        }
+
+        // L11 is empty
+        Location result = service.findAvailableLocationForSKU("SKU-A");
+
+        assertEquals(L11, result, "Should return empty bay when SKU bays are full");
+    }
+
+    @Test
+    void findAvailableLocationForSKU_returnsAnyAvailableBayForNewSKU() {
+        Box b1 = box("B1", "SKU-A", 10, "2025-10-01", "2025-09-20T09:00:00");
+        service.setBoxLocation("B1", L10);
+        service.insertBoxFEFO(b1);
+
+        Location result = service.findAvailableLocationForSKU("SKU-NEW");
+
+        assertTrue(result.equals(L10) || result.equals(L11),
+                "Should return any available bay for new SKU");
+
+        BayMeta meta = state.bays.get(result);
+        int currentBoxes = state.bayBoxes.getOrDefault(result, new TreeSet<>()).size();
+        assertTrue(currentBoxes < meta.getCapacityBoxes(),
+                "Returned bay should have available capacity");
+    }
+
+    @Test
+    void findAvailableLocationForSKU_throwsExceptionWhenAllBaysFull() {
+        for (int i = 1; i <= 5; i++) {
+            Box b10 = box("B10-" + i, "SKU-A", 10, "2025-10-01", "2025-09-20T09:00:00");
+            Box b11 = box("B11-" + i, "SKU-B", 10, "2025-10-02", "2025-09-20T10:00:00");
+            service.setBoxLocation("B10-" + i, L10);
+            service.setBoxLocation("B11-" + i, L11);
+            service.insertBoxFEFO(b10);
+            service.insertBoxFEFO(b11);
+        }
+
+        IllegalStateException ex = assertThrows(IllegalStateException.class,
+                () -> service.findAvailableLocationForSKU("SKU-C"));
+
+        assertTrue(ex.getMessage().contains("No available bay with capacity"));
+        assertTrue(ex.getMessage().contains("SKU-C"));
+    }
+
+    @Test
+    void findAvailableLocationForSKU_prefersPartiallyFilledSKUBay() {
+        Box b1 = box("B1", "SKU-A", 10, "2025-10-01", "2025-09-20T09:00:00");
+        Box b2 = box("B2", "SKU-A", 10, "2025-10-02", "2025-09-20T10:00:00");
+        service.setBoxLocation("B1", L10);
+        service.setBoxLocation("B2", L10);
+        service.insertBoxFEFO(b1);
+        service.insertBoxFEFO(b2);
+
+        Location result = service.findAvailableLocationForSKU("SKU-A");
+
+        assertEquals(L10, result, "Should prefer bay with same SKU over empty bay");
+    }
+
+    @Test
+    void findAvailableLocationForSKU_skipsFullSKUBaysInSameAisle() {
+        Location L12 = new Location("W1", 1, 12);
+        state.bays.put(L12, new BayMeta("W1", 1, 12, 3));
+
+        for (int i = 1; i <= 5; i++) {
+            Box b = box("B10-" + i, "SKU-A", 10, "2025-10-01", "2025-09-20T09:00:00");
+            service.setBoxLocation("B10-" + i, L10);
+            service.insertBoxFEFO(b);
+        }
+
+        Box b12 = box("B12-1", "SKU-A", 10, "2025-10-02", "2025-09-20T10:00:00");
+        service.setBoxLocation("B12-1", L12);
+        service.insertBoxFEFO(b12);
+
+        Location result = service.findAvailableLocationForSKU("SKU-A");
+
+        assertEquals(L12, result, "Should find next available bay with same SKU");
+    }
 }

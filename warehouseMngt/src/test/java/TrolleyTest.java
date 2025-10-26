@@ -3,12 +3,13 @@ import isep.ipp.pt.g322.model.Trolley;
 import isep.ipp.pt.g322.service.PickingPlanService;
 import isep.ipp.pt.g322.service.TrolleyAllocatorService;
 import isep.ipp.pt.g322.service.TrolleyAllocatorService.Heuristic;
+import isep.ipp.pt.g322.service.ValidationException;
 
 import java.util.List;
 import java.util.Scanner;
 
 public class TrolleyTest {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws ValidationException {
         Scanner scanner = new Scanner(System.in);
         double capacity;
         int choice;

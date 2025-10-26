@@ -12,7 +12,7 @@ import java.util.Map;
 public class PickingPlanService {
     private List<Allocation> allocations;
 
-    public void populateUnitWeight() {
+public void populateUnitWeight() throws ValidationException {
         OrderAllocationService orderAllocationService = new OrderAllocationService();
         OrderAllocationResult result = orderAllocationService.allocateOrders();
         allocations = result.getAllocations();

@@ -3,6 +3,7 @@ package isep.ipp.pt.g322.model;
 public class OrderLine {
     private String sku;
     private int quantityRequested;
+    private int lineNumber;
 
     public String getSKU() {
         return sku;
@@ -21,8 +22,13 @@ public class OrderLine {
         this.sku = sku;
     }
 
-    public OrderLine(String sku, int quantityRequested) {
+    public OrderLine(String sku,int lineNumber, int quantityRequested) {
         this.sku = sku;
         this.quantityRequested = quantityRequested;
+        this.lineNumber = lineNumber;
+    }
+
+    public int getLineNumber() {
+        return lineNumber;
     }
 }

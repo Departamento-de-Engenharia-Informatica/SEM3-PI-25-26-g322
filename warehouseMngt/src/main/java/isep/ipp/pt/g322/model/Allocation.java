@@ -1,5 +1,7 @@
 package isep.ipp.pt.g322.model;
 
+import java.time.LocalDateTime;
+
 public class Allocation {
     private String orderID;
     private int lineNumber;
@@ -9,8 +11,11 @@ public class Allocation {
     private int aisle;
     private int bay;
     private double unitWeight;
+    private double totalWeight;
+    private int orderPriority;
+    private LocalDateTime orderDueDate;
 
-    public Allocation(String orderID, int lineNumber, String sku, int qtAlloc, String boxID, int aisle, int bay) {
+    public Allocation(String orderID, int lineNumber, String sku, int qtAlloc, String boxID, int aisle, int bay, int orderPriority, LocalDateTime orderDueDate) {
         this.orderID = orderID;
         this.lineNumber = lineNumber;
         this.sku = sku;
@@ -18,6 +23,8 @@ public class Allocation {
         this.boxID = boxID;
         this.aisle = aisle;
         this.bay = bay;
+        this.orderPriority = orderPriority;
+        this.orderDueDate = orderDueDate;
     }
 
     public String getOrderID() {
@@ -86,5 +93,16 @@ public class Allocation {
 
  public double getTotalWeight() {
         return unitWeight * qtAlloc;
+ }
+ public void setTotalWeight(double totalWeight) {
+         this.totalWeight = totalWeight;
+ }
+
+ public int getOrderPriority() {
+        return orderPriority;
+ }
+
+ public LocalDateTime getOrderDueDate() {
+        return orderDueDate;
  }
 }

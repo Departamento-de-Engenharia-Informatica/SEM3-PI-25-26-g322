@@ -1,11 +1,12 @@
 package isep.ipp.pt.g322;
 import isep.ipp.pt.g322.model.Allocation;
 import isep.ipp.pt.g322.service.PickingPlanService;
+import isep.ipp.pt.g322.service.ValidationException;
 
 import java.util.List;
 
 public class Main {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws ValidationException {
 
         // Cria o serviço e popula o unitWeight
         PickingPlanService pps = new PickingPlanService();

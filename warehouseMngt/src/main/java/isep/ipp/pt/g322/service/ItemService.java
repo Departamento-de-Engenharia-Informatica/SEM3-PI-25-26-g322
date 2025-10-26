@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.Map;
 
 public class ItemService {
-    static String path = "warehouseMngt/src/resources/items.csv";
+    static String path = "warehouseMngt/src/main/java/isep/ipp/pt/g322/data/items.csv";
 
     public static List<Item> getItems() {
         String line = "";

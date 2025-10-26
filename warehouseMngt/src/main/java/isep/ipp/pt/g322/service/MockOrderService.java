@@ -19,10 +19,7 @@ public class MockOrderService {
         Order order2 = new Order("ORD00002", LocalDateTime.parse("2025-10-03T14:00:00"),3);
         Order order3 = new Order("ORD00003", LocalDateTime.parse("2025-10-04T22:00:00"),3);
 
-        order1.addOrderLine(new OrderLine("SKU0007", 36));
-        order2.addOrderLine(new OrderLine("SKU0004", 15));
-        order2.addOrderLine(new OrderLine("SKU0025", 49));
-        order3.addOrderLine(new OrderLine("SKU0005", 42));
+
 
         Orders.add(order1);
         Orders.add(order2);
@@ -34,5 +31,3 @@ public class MockOrderService {
     }
 
 }
-
-

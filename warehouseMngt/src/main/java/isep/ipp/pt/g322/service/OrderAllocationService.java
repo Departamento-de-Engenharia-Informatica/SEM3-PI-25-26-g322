@@ -1,88 +1,122 @@
 package isep.ipp.pt.g322.service;
 
+import java.nio.file.Paths;
+import java.util.*;
+import java.util.stream.Collectors;
+import isep.ipp.pt.g322.model.*;
+import isep.ipp.pt.g322.service.CsvImporter;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Map;
-
-import isep.ipp.pt.g322.model.OrderAllocationResult;
-import isep.ipp.pt.g322.model.Allocation;
-import isep.ipp.pt.g322.model.OrderLineStatus;
-import isep.ipp.pt.g322.model.Order;
-import isep.ipp.pt.g322.model.Box;
-import isep.ipp.pt.g322.model.OrderLine;
 public class OrderAllocationService {
 
-    public OrderAllocationResult allocateOrders() {
-        MockOrderService orderService = new MockOrderService();
-        MockInventoryService inventoryService = new MockInventoryService();
+    private boolean strictMode = true;
+
+    public void setStrictMode(boolean strictMode) {
+        this.strictMode = strictMode;
+    }
+
+    public OrderAllocationResult allocateOrders() throws ValidationException {
+        // 1. Create the shared inventory state
+        InventoryService.InventoryState state = new InventoryService.InventoryState();
+        CsvImporter csvImporter = new CsvImporter(state);
+        InventoryService inventoryService = new InventoryService(state);
 
         List<Allocation> allocations = new ArrayList<>();
         List<OrderLineStatus> orderStatuses = new ArrayList<>();
 
-        List<Order> orders = orderService.getOrders();
-        Map<String, List<Box>> inventoryBySKU = inventoryService.getBoxBySKU();
+        // 2. Load items, warehouse, and wagons into the state
+    csvImporter.loadItems("warehouseMngt/src/main/java/isep/ipp/pt/g322/data/items.csv");
+    csvImporter.loadWarehouse("warehouseMngt/src/main/java/isep/ipp/pt/g322/data/bays.csv");
+    csvImporter.loadWagons("warehouseMngt/src/main/java/isep/ipp/pt/g322/data/wagons.csv");
 
-        // For every order in the orders list, organizes by comparing each order's
-        // priority first, then it's due date and then the OrderID (FEFO and FIFO order)
+        // 3. Load orders and order lines
+        List<Order> orders = csvImporter.loadOrders("warehouseMngt/src/main/java/isep/ipp/pt/g322/data/orders.csv");
+        csvImporter.loadOrderLines("warehouseMngt/src/main/java/isep/ipp/pt/g322/data/order_lines.csv", orders);
+
+        // 4. Sort orders by priority, due date, and order ID
         orders.sort(Comparator
                 .comparingInt(Order::getPriority)
                 .thenComparing(Order::getDueDate)
-                .thenComparing(Order::getOrderID));
+                .thenComparing(Order::getOrderID)
+        );
 
-        // For every box in the boxes list gets the values on the inventory by SKU and
-        // compares based on their ExpiryDate and if that's equal compares based on the
-        // time it got received
-        for (List<Box> boxes : inventoryBySKU.values()) {
-            boolean allHaveExpiry = boxes.stream().allMatch(b -> b.getExpiryDate() != null);
-            if (allHaveExpiry) {
-                boxes.sort(Comparator.comparing(Box::getExpiryDate));
-            } else {
-                boxes.sort(Comparator.comparing(Box::getReceivedAt));
-            }
-        }
-
-        // For every order in the orders list, goes through each line in OrderLines
-        // and gets the SKU from each order
+        // 5. Allocate each order line using inventoryService
         for (Order order : orders) {
-            int lineNumber = 1;
             for (OrderLine line : order.getOrderLines()) {
-                String sku = line.getSKU();
+                String sku = line.getSKU().trim().toUpperCase();
                 int requestedQty = line.getQuantityRequested();
+                int lineNumber = line.getLineNumber();
+                int allocatedQty = 0;
+                List<Allocation> tempAllocations = new ArrayList<>();
+
                 int remainingQty = requestedQty;
-
-                // For every box in boxes list, gets its quantity and subtracts from the requested
-                // quantity on the order, allocates the order and reduces quantity from the used box
-                List<Box> boxes = inventoryBySKU.get(sku);
-                if (boxes != null) {
-                    for (Box box : boxes) {
-                        if (remainingQty == 0) break;
-
-                        int boxQty = box.getQuantity();
-                        int allocQty = Math.min(boxQty, remainingQty);
-
-                        if (allocQty > 0) {
-                            allocations.add(new Allocation(order.getOrderID(), lineNumber, sku, allocQty, box.getBoxID(), 0, 0));
-                            remainingQty -= allocQty;
-                            box.setQuantity(boxQty - allocQty);
+                while (remainingQty > 0) {
+                    // Find a bay with available boxes for this SKU
+                    try {
+                        Location loc = inventoryService.findAvailableLocationForSKU(sku);
+                        // Get the box with FEFO in this location
+                        Box box = state.bayBoxes.get(loc) != null && !state.bayBoxes.get(loc).isEmpty()
+                                ? state.bayBoxes.get(loc).first() : null;
+                        if (box == null || !box.getSKU().equalsIgnoreCase(sku) || box.getQuantity() == 0) {
+                            break;
                         }
+                        int allocQty = Math.min(box.getQuantity(), remainingQty);
+                        if (allocQty > 0) {
+                            Allocation alloc = new Allocation(
+                                    order.getOrderID(),
+                                    lineNumber,
+                                    sku,
+                                    allocQty,
+                                    box.getBoxID(),
+                                    loc.getAisle(),
+                                    loc.getBay(),
+                                    order.getPriority(),
+                                    order.getDueDate()
+                            );
+                            tempAllocations.add(alloc);
+                            // Dispatch from inventory
+                            inventoryService.dispatch(sku, allocQty);
+                            allocatedQty += allocQty;
+                            remainingQty -= allocQty;
+                        } else {
+                            break;
+                        }
+                    } catch (Exception e) {
+                        // No more available boxes for this SKU
+                        break;
                     }
                 }
 
-                // Checks based on the allocated and requested quantity if the order status is eligible
-                // partial, or undispatchable
-                int allocatedQty = requestedQty - remainingQty;
-                String status = (allocatedQty == requestedQty)
-                        ? "ELIGIBLE"
-                        : (allocatedQty > 0 ? "PARTIAL" : "UNDISPATCHABLE");
+                String status;
+                if (strictMode) {
+                    if (allocatedQty == requestedQty) {
+                        status = "ELIGIBLE";
+                        allocations.addAll(tempAllocations);
+                    } else {
+                        status = "UNDISPATCHABLE";
+                    }
+                } else {
+                    if (allocatedQty == 0) {
+                        status = "UNDISPATCHABLE";
+                    } else if (allocatedQty < requestedQty) {
+                        status = "PARTIAL";
+                        allocations.addAll(tempAllocations);
+                    } else {
+                        status = "ELIGIBLE";
+                        allocations.addAll(tempAllocations);
+                    }
+                }
 
-                orderStatuses.add(new OrderLineStatus(order.getOrderID(), lineNumber, sku, requestedQty, allocatedQty, status));
-                lineNumber++;
+                orderStatuses.add(new OrderLineStatus(
+                        order.getOrderID(),
+                        lineNumber,
+                        sku,
+                        requestedQty,
+                        allocatedQty,
+                        status
+                ));
             }
         }
 
-        //return new OrderAllocationResult(allocations, orderStatuses);
-        return null;
+        return new OrderAllocationResult(allocations, orderStatuses);
     }
 }

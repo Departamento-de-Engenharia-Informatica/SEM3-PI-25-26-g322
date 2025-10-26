@@ -1,24 +1,47 @@
 package isep.ipp.pt.g322.model;
 
-public class BayMeta {
-    private final String warehouseId;
-    private final int aisle;
-    private final int bay;
-    private final int capacityBoxes;
+import java.util.*;
 
-    public BayMeta(String warehouseId, int aisle, int bay, int capacityBoxes) {
+
+public class BayMeta {
+   private final String warehouseId;
+    private final String aisleId;
+    private final int bayNumber;
+    private final int capacityBoxes;
+    private final List<Box> boxes = new ArrayList<>();
+
+    public BayMeta(String warehouseId, String aisleId, int bayNumber, int capacityBoxes) {
         this.warehouseId = warehouseId;
-        this.aisle = aisle;
-        this.bay = bay;
+        this.aisleId = aisleId;
+        this.bayNumber = bayNumber;
         this.capacityBoxes = capacityBoxes;
     }
 
+    public int getBayNumber() { return bayNumber; }
+    public String getAisleId() { return aisleId; }
     public String getWarehouseId() { return warehouseId; }
-    public int getAisle() { return aisle; }
-    public int getBay() { return bay; }
     public int getCapacityBoxes() { return capacityBoxes; }
 
-    public Location toLocation() {
-        return new Location(warehouseId, aisle, bay);
+    public List<Box> getBoxes() { return boxes; }
+
+    public boolean hasCapacity() {
+        return boxes.size() < capacityBoxes;
+    }
+
+    /** Adds box in FEFO/FIFO order. */
+    public void addBox(Box box) {
+        if (!hasCapacity())
+            throw new IllegalStateException("Bay full (" + warehouseId + "/" + aisleId + "/" + bayNumber + ")");
+        boxes.add(box);
+        Collections.sort(boxes);
+    }
+
+    public Box removeFrontBox() {
+        return boxes.isEmpty() ? null : boxes.remove(0);
+    }
+
+    @Override
+    public String toString() {
+        return String.format("Bay[%s-%s-%d] (%d/%d boxes)", warehouseId, aisleId, bayNumber, boxes.size(), capacityBoxes);
     }
 }

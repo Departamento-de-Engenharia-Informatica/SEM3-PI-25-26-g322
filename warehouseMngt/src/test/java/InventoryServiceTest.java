@@ -28,8 +28,8 @@ public class InventoryServiceTest {
         L10 = new Location("W1", 1, 10);
         L11 = new Location("W1", 1, 11);
 
-        state.bays.put(L10, new BayMeta("W1", 1, 10, 5));
-        state.bays.put(L11, new BayMeta("W1", 1, 11, 5));
+        state.bays.put(L10, new BayMeta("W1", "1", 10, 5));
+        state.bays.put(L11, new BayMeta("W1", "1", 11, 5));
     }
 
     private Box box(String id, String sku, int qty, String expiryOrNull, String receivedAt) {
@@ -129,7 +129,7 @@ public class InventoryServiceTest {
     void insert_respectsBayCapacity() {
         // Capacidade 1
         Location Lcap = new Location("W1", 1, 99);
-        state.bays.put(Lcap, new BayMeta("W1", 1, 99, 1));
+        state.bays.put(Lcap, new BayMeta("W1", "1", 99, 1));
 
         Box c1 = box("C1", "SKU-X", 1, null, "2025-09-20T09:00:00");
         Box c2 = box("C2", "SKU-X", 1, null, "2025-09-20T09:01:00");
@@ -224,7 +224,7 @@ public class InventoryServiceTest {
     @Test
     void findAvailableLocationForSKU_skipsFullSKUBaysInSameAisle() {
         Location L12 = new Location("W1", 1, 12);
-        state.bays.put(L12, new BayMeta("W1", 1, 12, 3));
+        state.bays.put(L12, new BayMeta("W1", "1", 12, 3));
 
         for (int i = 1; i <= 5; i++) {
             Box b = box("B10-" + i, "SKU-A", 10, "2025-10-01", "2025-09-20T09:00:00");

@@ -78,7 +78,7 @@ public class CsvImporter {
 
             while ((line = br.readLine()) != null) {
                 lineNo++;
-                String[] f = line.split("[,;\\t]+");
+                String[] f = line.split(";");
                 if (f.length != 4)
                     throw new ValidationException("bays.csv line " + lineNo + ": invalid column count");
 

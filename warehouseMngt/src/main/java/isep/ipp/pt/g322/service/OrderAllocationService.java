@@ -17,8 +17,8 @@ public class OrderAllocationService {
     public OrderAllocationResult allocateOrders() throws ValidationException {
         // 1. Create the shared inventory state
         InventoryService.InventoryState state = new InventoryService.InventoryState();
-        CsvImporter csvImporter = new CsvImporter(state);
         InventoryService inventoryService = new InventoryService(state);
+        CsvImporter csvImporter = new CsvImporter(state, inventoryService);
 
         List<Allocation> allocations = new ArrayList<>();
         List<OrderLineStatus> orderStatuses = new ArrayList<>();

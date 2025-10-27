@@ -7,8 +7,8 @@ public class AllocationTest {
     public static void main(String[] args) throws ValidationException {
         // Use the g322 InventoryService and CsvImporter with InventoryState
         InventoryService.InventoryState state = new InventoryService.InventoryState();
-        CsvImporter importer = new CsvImporter(state);
         InventoryService inventoryService = new InventoryService(state);
+        CsvImporter importer = new CsvImporter(state, inventoryService);
 
         // Load data into state
         importer.loadItems("warehouseMngt/src/main/java/isep/ipp/pt/g322/data/items.csv");

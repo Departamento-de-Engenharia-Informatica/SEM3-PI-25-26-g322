@@ -15,7 +15,8 @@ public class CargoHandlingCLI {
 
     private final InventoryService.InventoryState state = new InventoryService.InventoryState();
     private final InventoryService inventoryService = new InventoryService(state);
-    private final CsvImporter importer = new CsvImporter(state, inventoryService);    private final OrderAllocationService allocationService = new OrderAllocationService();
+    private final CsvImporter importer = new CsvImporter(state, inventoryService);
+    private final OrderAllocationService allocationService = new OrderAllocationService(state, inventoryService);
     private final PickingPlanService pickingService = new PickingPlanService();
     private final TrolleyAllocatorService trolleyService = new TrolleyAllocatorService();
 
@@ -104,60 +105,99 @@ public class CargoHandlingCLI {
     private void loadAllData() throws ValidationException {
         System.out.println("Loading CSV files...");
         importer.loadItems(ITEMS_CSV);
-        System.out.printf("[OK] %d SKUs loaded%n", items.size());
+            this.items = state.items;
+            System.out.printf("[OK] %d SKUs loaded%n", items.size());
 
-        importer.loadWagons(WAGONS_CSV);
-        System.out.printf("[OK] %d wagons loaded%n", wagons.size());
+    // Only use loadWagonsAsList to get all boxes, skip strict placement
+    this.wagons = importer.loadWagonsAsList(WAGONS_CSV);
+    System.out.printf("[OK] %d wagons loaded%n", wagons.size());
 
         importer.loadWarehouse(BAYS_CSV);
-        System.out.printf("[OK] Warehouse loaded: aisles=%d, total bays=%d%n",
-                warehouse.getAllBays().stream().map(BayMeta::getAisleId).distinct().count(),
-                warehouse.getTotalBays());
+        if (!state.bays.isEmpty()) {
+            String warehouseId = state.bays.values().iterator().next().getWarehouseId();
+            Warehouse wh = new Warehouse(warehouseId);
+            for (BayMeta bay : state.bays.values()) {
+                wh.addBay(bay.getWarehouseId(), bay.getAisleId(), bay.getBayNumber(), bay.getCapacityBoxes());
+            }
+            this.warehouse = wh;
+            System.out.printf("[OK] Warehouse loaded: aisles=%d, total bays=%d%n",
+                    warehouse.getAllBays().stream().map(BayMeta::getAisleId).distinct().count(),
+                    warehouse.getTotalBays());
+        } else {
+            this.warehouse = null;
+            System.out.println("[ERROR] Warehouse not loaded.");
+        }
 
         orders = importer.loadOrders(ORDERS_CSV);
         importer.loadOrderLines(ORDER_LINES_CSV, orders);
         System.out.printf("[OK] %d orders loaded%n", orders.size());
 
-        boxes = new ArrayList<>(state.boxById.values());
+        boxes = new ArrayList<>();
+        for (Wagon w : wagons) {
+            boxes.addAll(w.getBoxes());
+        }
         System.out.printf("[OK] %d boxes loaded into inventory%n", boxes.size());
-
         distributeBoxesToBaysIfEmpty();
+        state.boxById.clear();
+        state.bayBoxes.clear();
+        state.skuToBays.clear();
+        if (warehouse != null) {
+            for (BayMeta bay : warehouse.getAllBays()) {
+                Location loc = new Location(bay.getWarehouseId(), Integer.parseInt(bay.getAisleId()), bay.getBayNumber());
+                NavigableSet<Box> set = new TreeSet<>(InventoryService.FEFO);
+                set.addAll(bay.getBoxes());
+                state.bayBoxes.put(loc, set);
+                for (Box box : bay.getBoxes()) {
+                    state.boxById.put(box.getBoxID(), box);
+                    // Update skuToBays index
+                    SortedMap<Integer, Set<Location>> byBay = state.skuToBays.computeIfAbsent(box.getSKU(), k -> new TreeMap<>());
+                    Set<Location> locs = byBay.computeIfAbsent(loc.getBay(), k -> new LinkedHashSet<>());
+                    locs.add(loc);
+                }
+                System.out.printf("  Bay %s-%s-%d: %d boxes\n", bay.getWarehouseId(), bay.getAisleId(), bay.getBayNumber(), bay.getBoxes().size());
+            }
+        }
         allocationResult = null;
         trolleyPlan = null;
     }
 
+    // Distribute loaded boxes across bays in round-robin fashion (like colleagues)
     private void distributeBoxesToBaysIfEmpty() {
+        if (warehouse == null || boxes == null || boxes.isEmpty()) return;
         List<BayMeta> allBays = warehouse.getAllBays();
+        if (allBays.isEmpty()) return;
+        // Only distribute if all bays are empty
         boolean baysEmpty = allBays.stream().allMatch(b -> b.getBoxes().isEmpty());
         if (!baysEmpty) return;
-        if (boxes == null || boxes.isEmpty()) return;
-
         int bayIdx = 0;
         for (Box box : boxes) {
             int attempts = 0;
-            while (!allBays.get(bayIdx).hasCapacityForSKU(box.getSKU()) && attempts < allBays.size()) {
+            while (!allBays.get(bayIdx).hasCapacity() && attempts < allBays.size()) {
                 bayIdx = (bayIdx + 1) % allBays.size();
                 attempts++;
             }
             if (attempts >= allBays.size()) break;
-
-            BayMeta targetBay = allBays.get(bayIdx);
-            targetBay.getBoxes().add(box);
-
-            targetBay.getBoxes().sort(Comparator.comparing(Box::getBoxID));
-
+            allBays.get(bayIdx).getBoxes().add(box);
+            allBays.get(bayIdx).getBoxes().sort(Comparator.naturalOrder());
             bayIdx = (bayIdx + 1) % allBays.size();
         }
         System.out.println("[OK] Automatic box distribution across bays completed.");
     }
+
+
 
     private void showSummary() {
         if (items == null) {
             System.out.println("No data loaded. Use option 1 to load files.");
             return;
         }
-        int distinctSkus = items.size();
-        int totalBoxes = boxes == null ? 0 : boxes.size();
+        int distinctSkus = items == null ? 0 : items.size();
+        int totalBoxes = 0;
+        if (warehouse != null) {
+            for (BayMeta bay : warehouse.getAllBays()) {
+                totalBoxes += bay.getBoxes().size();
+            }
+        }
         int totalWagons = wagons == null ? 0 : wagons.size();
         int totalOrders = orders == null ? 0 : orders.size();
         int totalBays = warehouse == null ? 0 : warehouse.getTotalBays();
@@ -167,6 +207,11 @@ public class CargoHandlingCLI {
         System.out.println("Total wagons: " + totalWagons);
         System.out.println("Total orders: " + totalOrders);
         System.out.println("Total bays: " + totalBays);
+        if (warehouse != null) {
+            for (BayMeta bay : warehouse.getAllBays()) {
+                System.out.printf("Bay %s-%s-%d: %d boxes\n", bay.getWarehouseId(), bay.getAisleId(), bay.getBayNumber(), bay.getBoxes().size());
+            }
+        }
     }
 
     private void runAllocation() {
@@ -180,7 +225,7 @@ public class CargoHandlingCLI {
         allocationService.setStrictMode(strict);
         System.out.println("Running allocation (mode: " + (strict ? "STRICT" : "PARTIAL") + ")...");
         try {
-            allocationResult = allocationService.allocateOrders();
+            allocationResult = allocationService.allocateOrders(orders);
         } catch (ValidationException ve) {
             System.out.println("[VALIDATION] " + ve.getMessage());
             return;
@@ -206,8 +251,8 @@ public class CargoHandlingCLI {
             System.out.println("Run allocation first (option 3).");
             return;
         }
-        pickingService.populateUnitWeight();
-        List<Allocation> allocations = pickingService.getAllocations();
+        List<Allocation> allocations = allocationResult.getAllocations();
+        pickingService.populateUnitWeight(allocations);
         if (allocations == null || allocations.isEmpty()) {
             System.out.println("No allocations available to generate picking plan.");
             return;
@@ -307,6 +352,11 @@ public class CargoHandlingCLI {
             boxes = null;
             allocationResult = null;
             trolleyPlan = null;
+            state.items.clear();
+            state.bays.clear();
+            state.bayBoxes.clear();
+            state.boxById.clear();
+            state.skuToBays.clear();
             System.out.println("Memory cleared.");
         } else {
             System.out.println("Invalid operation.");

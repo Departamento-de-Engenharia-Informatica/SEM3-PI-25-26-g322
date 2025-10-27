@@ -56,8 +56,10 @@ public class CsvImporter {
                     if (sku.isEmpty() || name.isEmpty() || category.isEmpty() || unit.isEmpty())
                         throw new ValidationException("items.csv line " + lineNo + ": missing mandatory fields");
 
-                    if (state.items.containsKey(sku))
+                    if (state.items.containsKey(sku)) {
+                        System.out.println("[DEBUG] Duplicate detected: '" + sku + "' at line " + lineNo);
                         throw new ValidationException("items.csv line " + lineNo + ": duplicate SKU " + sku);
+                    }
 
                     double volume = Double.parseDouble(f[4]);
                     double unitWeight = Double.parseDouble(f[5]);
@@ -166,9 +168,13 @@ public class CsvImporter {
                     Box box = new Box(boxId, sku, qty, expiryDate, receivedAt);
 
                     // escolher local para este SKU e inserir pelo serviço
-                    Location loc = inventoryService.findAvailableLocationForSKU(sku);
-                    inventoryService.setBoxLocation(boxId, loc);
-                    inventoryService.insertBoxFEFO(box);
+                    try {
+                        Location loc = inventoryService.findAvailableLocationForSKU(sku);
+                        inventoryService.setBoxLocation(boxId, loc);
+                        inventoryService.insertBoxFEFO(box);
+                    } catch (IllegalStateException e) {
+                        System.err.println("[WARNING] Could not place box " + boxId + " (SKU: " + sku + "): " + e.getMessage());
+                    }
                 }
             }
         } catch (IOException e) {
@@ -176,6 +182,61 @@ public class CsvImporter {
         } catch (NumberFormatException e) {
             throw new ValidationException("Invalid numeric value in wagons.csv: " + e.getMessage(), e);
         }
+    }
+
+    public List<Wagon> loadWagonsAsList(String filename) throws ValidationException {
+        Map<String, Wagon> wagonMap = new LinkedHashMap<>();
+        Set<String> boxIds = new HashSet<>();
+        try (InputStream in = getClass().getClassLoader().getResourceAsStream(filename)) {
+            if (in == null) throw new IOException("Resource not found: " + filename);
+            try (BufferedReader br = new BufferedReader(new InputStreamReader(in))) {
+                String header = br.readLine();
+                if (header == null) throw new ValidationException("wagons.csv is empty");
+                String line; int lineNo = 1;
+                while ((line = br.readLine()) != null) {
+                    lineNo++;
+                    String[] f = splitFlexible(line);
+                    if (f.length != 6)
+                        throw new ValidationException("wagons.csv line " + lineNo + ": invalid column count");
+                    String wagonId = f[0];
+                    String boxId = f[1];
+                    String sku = f[2];
+                    int qty = Integer.parseInt(f[3]);
+                    String expiryStr = f[4];
+                    String receivedStr = f[5];
+                    if (wagonId.isEmpty() || boxId.isEmpty() || sku.isEmpty())
+                        throw new ValidationException("wagons.csv line " + lineNo + ": missing required field");
+                    if (!state.items.containsKey(sku))
+                        throw new ValidationException("wagons.csv line " + lineNo + ": unknown SKU " + sku);
+                    if (qty <= 0)
+                        throw new ValidationException("wagons.csv line " + lineNo + ": invalid quantity " + qty);
+                    if (!boxIds.add(boxId))
+                        throw new ValidationException("wagons.csv line " + lineNo + ": duplicate boxId " + boxId);
+                    LocalDate expiryDate = null;
+                    if (!expiryStr.isEmpty()) {
+                        try {
+                            expiryDate = LocalDate.parse(expiryStr);
+                        } catch (DateTimeParseException e) {
+                            throw new ValidationException("wagons.csv line " + lineNo + ": invalid expiryDate format");
+                        }
+                    }
+                    LocalDateTime receivedAt;
+                    try {
+                        receivedAt = LocalDateTime.parse(receivedStr);
+                    } catch (DateTimeParseException e) {
+                        throw new ValidationException("wagons.csv line " + lineNo + ": invalid receivedAt timestamp");
+                    }
+                    Box box = new Box(boxId, sku, qty, expiryDate, receivedAt);
+                    Wagon wagon = wagonMap.computeIfAbsent(wagonId, Wagon::new);
+                    wagon.addBox(box);
+                }
+            }
+        } catch (IOException e) {
+            throw new ValidationException("Error reading wagons.csv: " + e.getMessage(), e);
+        } catch (NumberFormatException e) {
+            throw new ValidationException("Invalid numeric value in wagons.csv: " + e.getMessage(), e);
+        }
+        return new ArrayList<>(wagonMap.values());
     }
 
     // ---------------- orders.csv ----------------

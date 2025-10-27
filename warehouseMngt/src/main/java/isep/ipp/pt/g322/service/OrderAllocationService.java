@@ -9,37 +9,43 @@ import isep.ipp.pt.g322.service.CsvImporter;
 public class OrderAllocationService {
 
     private boolean strictMode = true;
+    private final InventoryService.InventoryState state;
+    private final InventoryService inventoryService;
+
+    // Default constructor for legacy usage (not recommended)
+    public OrderAllocationService() {
+        this.state = new InventoryService.InventoryState();
+        this.inventoryService = new InventoryService(this.state);
+    }
+
+    // New constructor for dependency injection
+    public OrderAllocationService(InventoryService.InventoryState state, InventoryService inventoryService) {
+        this.state = state;
+        this.inventoryService = inventoryService;
+    }
 
     public void setStrictMode(boolean strictMode) {
         this.strictMode = strictMode;
     }
 
-    public OrderAllocationResult allocateOrders() throws ValidationException {
-        // 1. Create the shared inventory state
-        InventoryService.InventoryState state = new InventoryService.InventoryState();
-        InventoryService inventoryService = new InventoryService(state);
-        CsvImporter csvImporter = new CsvImporter(state, inventoryService);
-
+    /**
+     * Allocates orders using the current inventory state and service.
+     * @param orders List of orders to allocate (should be loaded and populated by caller)
+     * @return OrderAllocationResult
+     * @throws ValidationException
+     */
+    public OrderAllocationResult allocateOrders(List<Order> orders) throws ValidationException {
         List<Allocation> allocations = new ArrayList<>();
         List<OrderLineStatus> orderStatuses = new ArrayList<>();
 
-        // 2. Load items, warehouse, and wagons into the state
-    csvImporter.loadItems("isep/ipp/pt/g322/data/items.csv");
-    csvImporter.loadWarehouse("isep/ipp/pt/g322/data/bays.csv");
-    csvImporter.loadWagons("isep/ipp/pt/g322/data/wagons.csv");
-
-        // 3. Load orders and order lines
-        List<Order> orders = csvImporter.loadOrders("isep/ipp/pt/g322/data/orders.csv");
-        csvImporter.loadOrderLines("isep/ipp/pt/g322/data/order_lines.csv", orders);
-
-        // 4. Sort orders by priority, due date, and order ID
+        // Sort orders by priority, due date, and order ID
         orders.sort(Comparator
                 .comparingInt(Order::getPriority)
                 .thenComparing(Order::getDueDate)
                 .thenComparing(Order::getOrderID)
         );
 
-        // 5. Allocate each order line using inventoryService
+        // Allocate each order line using inventoryService
         for (Order order : orders) {
             for (OrderLine line : order.getOrderLines()) {
                 String sku = line.getSKU().trim().toUpperCase();

@@ -10,13 +10,13 @@ import java.util.List;
 import java.util.Map;
 
 public class PickingPlanService {
-    private List<Allocation> allocations;
 
-public void populateUnitWeight() throws ValidationException {
-        OrderAllocationService orderAllocationService = new OrderAllocationService();
-        OrderAllocationResult result = orderAllocationService.allocateOrders();
-        allocations = result.getAllocations();
-
+    /**
+     * Populates unit weight for each allocation in the provided list.
+     * @param allocations List of allocations to update
+     * @throws ValidationException
+     */
+    public void populateUnitWeight(List<Allocation> allocations) throws ValidationException {
         ItemService itemService = new ItemService();
         Map<String, Item> itemMap = itemService.getItemBySKU();
 
@@ -31,11 +31,7 @@ public void populateUnitWeight() throws ValidationException {
             }
         }
     }
-
-    public List<Allocation> getAllocations() {
-        return allocations;
-    }
-     public void printPickingPlan(List<Trolley> trolleys) {
+    public void printPickingPlan(List<Trolley> trolleys) {
         System.out.println("Total de trolleys utilizados: " + trolleys.size());
         for (Trolley trolley : trolleys) {
             double utilization = trolley.getUsedWeight() / trolley.getCapacity() * 100;

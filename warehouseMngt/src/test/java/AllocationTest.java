@@ -29,11 +29,11 @@ public class AllocationTest {
             System.out.printf("%s -> %d boxes%n", entry.getKey(), entry.getValue());
         }
 
-        // ===== 4. INJETAR INVENTÁRIO NA SERVICE =====
-        OrderAllocationService service = new OrderAllocationService();
-        service.setStrictMode(false); // modo parcial
+    // ===== 4. INJETAR INVENTÁRIO NA SERVICE =====
+    OrderAllocationService service = new OrderAllocationService(state, inventoryService);
+    service.setStrictMode(false); // modo parcial
 
-        OrderAllocationResult result = service.allocateOrders();
+    OrderAllocationResult result = service.allocateOrders(orders);
 
         // ===== 5. EXIBIR RESULTADOS =====
         System.out.println("\n===== RESULTADO DAS ALOCAÇÕES =====");

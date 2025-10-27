@@ -11,13 +11,13 @@ public class AllocationTest {
         CsvImporter importer = new CsvImporter(state, inventoryService);
 
         // Load data into state
-        importer.loadItems("warehouseMngt/src/main/java/isep/ipp/pt/g322/data/items.csv");
-        importer.loadWarehouse("warehouseMngt/src/main/java/isep/ipp/pt/g322/data/bays.csv");
-        importer.loadWagons("warehouseMngt/src/main/java/isep/ipp/pt/g322/data/wagons.csv");
+        importer.loadItems("isep/ipp/pt/g322/data/items.csv");
+        importer.loadWarehouse("isep/ipp/pt/g322/data/bays.csv");
+        importer.loadWagons("isep/ipp/pt/g322/data/wagons.csv");
 
         // Load orders and order lines
-        List<Order> orders = importer.loadOrders("warehouseMngt/src/main/java/isep/ipp/pt/g322/data/orders.csv");
-        importer.loadOrderLines("warehouseMngt/src/main/java/isep/ipp/pt/g322/data/order_lines.csv", orders);
+        List<Order> orders = importer.loadOrders("isep/ipp/pt/g322/data/orders.csv");
+        importer.loadOrderLines("isep/ipp/pt/g322/data/order_lines.csv", orders);
 
         // ===== 3. PRINT SKUs DISPONÍVEIS NO INVENTÁRIO =====
         System.out.println("SKUs disponíveis no inventário:");

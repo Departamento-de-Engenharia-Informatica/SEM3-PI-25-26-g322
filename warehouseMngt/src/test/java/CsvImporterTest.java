@@ -12,11 +12,11 @@ class CsvImporterTest {
     private InventoryService.InventoryState state;
     private CsvImporter importer;
 
-    private static final String ITEMS      = "src/main/java/isep/ipp/pt/g322/data/items.csv";
-    private static final String BAYS       = "src/main/java/isep/ipp/pt/g322/data/bays.csv";
-    private static final String WAGONS     = "src/main/java/isep/ipp/pt/g322/data/wagons.csv";
-    private static final String ORDERS     = "src/main/java/isep/ipp/pt/g322/data/orders.csv";
-    private static final String ORDERLINES = "src/main/java/isep/ipp/pt/g322/data/order_lines.csv";
+    private static final String ITEMS      = "isep/ipp/pt/g322/data/items.csv";
+    private static final String BAYS       = "isep/ipp/pt/g322/data/bays.csv";
+    private static final String WAGONS     = "isep/ipp/pt/g322/data/wagons.csv";
+    private static final String ORDERS     = "isep/ipp/pt/g322/data/orders.csv";
+    private static final String ORDERLINES = "isep/ipp/pt/g322/data/order_lines.csv";
 
 
     @BeforeEach

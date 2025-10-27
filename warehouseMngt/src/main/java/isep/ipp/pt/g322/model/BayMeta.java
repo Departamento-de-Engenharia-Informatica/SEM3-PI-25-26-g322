@@ -44,4 +44,8 @@ public class BayMeta {
     public String toString() {
         return String.format("Bay[%s-%s-%d] (%d/%d boxes)", warehouseId, aisleId, bayNumber, boxes.size(), capacityBoxes);
     }
+
+    public boolean hasCapacityForSKU(String sku) {
+        return boxes.size() < capacityBoxes; 
+    }
 }

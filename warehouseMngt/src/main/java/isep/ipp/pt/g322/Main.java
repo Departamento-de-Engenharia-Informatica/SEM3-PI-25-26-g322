@@ -26,8 +26,6 @@ public class Main {
         }
 
         System.out.println("\nTest completed: All allocations should now have unitWeight set.");
-                // TODO: quando quisermos ligar a UI/texto, chamamos InventoryService/CsvImporter aqui.
-
     }
 }
 

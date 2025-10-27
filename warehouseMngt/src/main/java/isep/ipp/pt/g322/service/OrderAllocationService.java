@@ -24,13 +24,13 @@ public class OrderAllocationService {
         List<OrderLineStatus> orderStatuses = new ArrayList<>();
 
         // 2. Load items, warehouse, and wagons into the state
-    csvImporter.loadItems("warehouseMngt/src/main/java/isep/ipp/pt/g322/data/items.csv");
-    csvImporter.loadWarehouse("warehouseMngt/src/main/java/isep/ipp/pt/g322/data/bays.csv");
-    csvImporter.loadWagons("warehouseMngt/src/main/java/isep/ipp/pt/g322/data/wagons.csv");
+    csvImporter.loadItems("isep/ipp/pt/g322/data/items.csv");
+    csvImporter.loadWarehouse("isep/ipp/pt/g322/data/bays.csv");
+    csvImporter.loadWagons("isep/ipp/pt/g322/data/wagons.csv");
 
         // 3. Load orders and order lines
-        List<Order> orders = csvImporter.loadOrders("warehouseMngt/src/main/java/isep/ipp/pt/g322/data/orders.csv");
-        csvImporter.loadOrderLines("warehouseMngt/src/main/java/isep/ipp/pt/g322/data/order_lines.csv", orders);
+        List<Order> orders = csvImporter.loadOrders("isep/ipp/pt/g322/data/orders.csv");
+        csvImporter.loadOrderLines("isep/ipp/pt/g322/data/order_lines.csv", orders);
 
         // 4. Sort orders by priority, due date, and order ID
         orders.sort(Comparator

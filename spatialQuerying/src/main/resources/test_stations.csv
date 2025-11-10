@@ -1,0 +1,29 @@
+country,time_zone,time_zone_group,station,latitude,longitude,is_city,is_main_station,is_airport
+FR,"('Europe/Paris',)",CET,Chateau-Arnoux-St-Auban,44.08179,6.001625,True,False,False
+FR,"('Europe/Paris',)",CET,Chateau-Arnoux-St-Auban,44.0615651,5.9973734,False,True,False
+FR,"('Europe/Paris',)",CET,Chateau-Arnoux Mairie,44.063863,6.011248,False,False,False
+FR,"('Europe/Paris',)",CET,Digne-les-Bains,44.35,6.35,True,False,False
+FR,"('Europe/Paris',)",CET,Digne-les-Bains,44.088710133980605,6.222982406616211,False,True,False
+FR,"('Europe/Paris',)",CET,La Crau,43.1449352,6.0687663,False,False,False
+ES,"('Europe/Madrid',)",CET,Barcelona Sants,41.3809,2.1407,True,True,False
+ES,"('Europe/Madrid',)",CET,Barcelona El Prat Airport,41.2974,2.0833,False,False,True
+DE,"('Europe/Berlin',)",CET,Berlin Hbf,52.5251,13.3694,True,True,False
+DE,"('Europe/Berlin',)",CET,Munich Hbf,48.1402,11.5583,True,True,False
+IT,"('Europe/Rome',)",CET,Roma Termini,41.9010,12.5010,True,True,False
+IT,"('Europe/Rome',)",CET,Milano Centrale,45.4840,9.2040,True,True,False
+CH,"('Europe/Zurich',)",CET,Zürich HB,47.3782,8.5402,True,True,False
+CH,"('Europe/Zurich',)",CET,Geneva Airport,46.2381,6.1090,False,False,True
+GB,"('Europe/London',)",GMT,London King’s Cross,51.5308,-0.1238,True,True,False
+GB,"('Europe/London',)",GMT,Manchester Piccadilly,53.4774,-2.2304,True,True,False
+GB,"('Europe/London',)",GMT,London Heathrow Airport,51.4700,-0.4543,False,False,True
+PL,"('Europe/Warsaw',)",CET,Warsaw Centralna,52.2297,21.0122,True,True,False
+PL,"('Europe/Warsaw',)",CET,Kraków Główny,50.0675,19.9450,True,True,False
+PT,"('Europe/Lisbon',)",WET,Lisbon Oriente,38.7679,-9.0997,True,True,False
+PT,"('Europe/Lisbon',)",WET,Lisbon Gama,38.7673,-9.0993,True,True,False
+PT,"('Europe/Lisbon',)",WET,Lisbon Another,38.7672,-9.0992,True,True,False
+PT,"('Europe/Lisbon',)",WET,Porto Campanhã,41.1505,-8.5850,True,True,False
+NL,"('Europe/Amsterdam',)",CET,Amsterdam Centraal,52.3784,4.9009,True,True,False
+BE,"('Europe/Brussels',)",CET,Brussels Midi,50.8369,4.3361,True,True,False
+BE,"('Europe/Brussels',)",CET,Brussels Midi,,4.3361,True,True,False
+BE,"('Europe/Brussels',)",CET,Brussels Midi,50.8369,,True,True,False
+PT,"('Europe/Lisbon',)",WET,Brussels,,-8.5850,True,True,False

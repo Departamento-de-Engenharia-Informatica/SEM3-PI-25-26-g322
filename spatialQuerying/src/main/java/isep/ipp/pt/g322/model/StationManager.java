@@ -103,7 +103,6 @@ public class StationManager {
     }
 
     private void addStationToIndices(Station station) {
-        System.out.println(station);
         addToLatitudeIndex(station);
 
         addToLongitudeIndex(station);
@@ -149,51 +148,43 @@ public class StationManager {
     }
 
     private LatitudeKey findLatitudeKey(LatitudeKey key) {
-        for (LatitudeKey existing : latitudeIndex.inOrder()) {
-            if (existing.compareTo(key) == 0) {
-                return existing;
-            }
-        }
-        return null;
+        return latitudeIndex.find(key);
     }
 
     private LongitudeKey findLongitudeKey(LongitudeKey key) {
-        for (LongitudeKey existing : longitudeIndex.inOrder()) {
-            if (existing.compareTo(key) == 0) {
-                return existing;
-            }
-        }
-        return null;
+        return longitudeIndex.find(key);
     }
 
     private TimezoneCountryKey findTimeZoneCountryKey(TimezoneCountryKey key) {
-        for (TimezoneCountryKey existing : timezoneCountryIndex.inOrder()) {
-            if (existing.compareTo(key) == 0) {
-                return existing;
-            }
-        }
-        return null;
+        return timezoneCountryIndex.find(key);
     }
 
     public List<Station> getStationsByTimeZoneGroup(String timeZoneGroup) {
         List<Station> result = new ArrayList<>();
 
-        for (TimezoneCountryKey key : timezoneCountryIndex.inOrder()) {
-            if (key.getTimezoneGroup().equals(timeZoneGroup)) {
-                result.addAll(key.getStations());
-            }
+        TimezoneCountryKey minKey = new TimezoneCountryKey(timeZoneGroup, "");
+        TimezoneCountryKey maxKey = new TimezoneCountryKey(timeZoneGroup, "\uffff");
+
+        List<TimezoneCountryKey> matchingKeys = timezoneCountryIndex.findRange(minKey, maxKey);
+
+        for (TimezoneCountryKey key : matchingKeys) {
+            result.addAll(key.getStations());
         }
 
         result.sort(Comparator.comparing(Station::getStation));
+
         return result;
     }
 
     public List<Station> getStationsByTimeZoneWindow(String[] timeZoneGroups) {
         List<Station> result = new ArrayList<>();
-        Set<String> tzSet = new HashSet<>(Arrays.asList(timeZoneGroups));
 
-        for (TimezoneCountryKey key : timezoneCountryIndex.inOrder()) {
-            if (tzSet.contains(key.getTimezoneGroup())) {
+        for (String tzGroup : timeZoneGroups) {
+            TimezoneCountryKey minKey = new TimezoneCountryKey(tzGroup, "");
+            TimezoneCountryKey maxKey = new TimezoneCountryKey(tzGroup, "\uffff");
+
+            List<TimezoneCountryKey> keys = timezoneCountryIndex.findRange(minKey, maxKey);
+            for (TimezoneCountryKey key : keys) {
                 result.addAll(key.getStations());
             }
         }
@@ -204,22 +195,27 @@ public class StationManager {
     public List<Station> getStationsByLatitudeRange(double minLat, double maxLat) {
         List<Station> result = new ArrayList<>();
 
-        for (LatitudeKey key : latitudeIndex.inOrder()) {
-            if (key.getLatitude() >= minLat && key.getLatitude() <= maxLat) {
-                result.addAll(key.getStations());
-            }
+        LatitudeKey minKey = new LatitudeKey(minLat);
+        LatitudeKey maxKey = new LatitudeKey(maxLat);
+
+        List<LatitudeKey> keys = latitudeIndex.findRange(minKey, maxKey);
+
+        for (LatitudeKey key : keys) {
+            result.addAll(key.getStations());
         }
 
         return result;
     }
 
     public List<Station> getStationsByLongitudeRange(double minLon, double maxLon) {
-        List<Station> result = new ArrayList<>();
+        LongitudeKey minKey = new LongitudeKey(minLon);
+        LongitudeKey maxKey = new LongitudeKey(maxLon);
 
-        for (LongitudeKey key : longitudeIndex.inOrder()) {
-            if (key.getLongitude() >= minLon && key.getLongitude() <= maxLon) {
-                result.addAll(key.getStations());
-            }
+        List<LongitudeKey> keys = longitudeIndex.findRange(minKey, maxKey);
+
+        List<Station> result = new ArrayList<>();
+        for (LongitudeKey key : keys) {
+            result.addAll(key.getStations());
         }
 
         return result;
@@ -228,7 +224,6 @@ public class StationManager {
     public int getTotalStations() {
         return totalStations;
     }
-
 
     public int getValidStations() {
         return validStations;

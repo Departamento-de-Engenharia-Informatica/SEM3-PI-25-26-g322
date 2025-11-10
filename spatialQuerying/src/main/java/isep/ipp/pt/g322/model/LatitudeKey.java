@@ -22,8 +22,9 @@ public class LatitudeKey implements Comparable<LatitudeKey> {
     }
 
     public void addStation(Station station) {
-        stations.add(station);
-        Collections.sort(stations); // this is to sort by station name as requested
+        int pos = Collections.binarySearch(stations, station);
+        if (pos < 0) pos = -(pos + 1);
+        stations.add(pos, station);
     }
 
     @Override

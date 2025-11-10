@@ -37,6 +37,11 @@ public class Main {
         List<Station> cetStations = indexManager.getStationsByTimeZoneGroup("CET");
         printQueryResults(cetStations, 10);
 
+        System.out.println("Query 1: All stations in CET time zone (ordered by country)");
+        System.out.println("-".repeat(60));
+        List<Station> wetStations = indexManager.getStationsByTimeZoneGroup("WET/GMT");
+        printQueryResults(wetStations, 10);
+
         //  All stations in a window of time zones [CET, WET/GMT]
         System.out.println("\nQuery 2: Stations in time zone window [CET, WET/GMT]");
         System.out.println("-".repeat(60));

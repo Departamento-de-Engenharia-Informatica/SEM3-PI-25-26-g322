@@ -22,8 +22,9 @@ public class LongitudeKey implements Comparable<LongitudeKey> {
     }
 
     public void addStation(Station station) {
-        stations.add(station);
-        Collections.sort(stations); // this is to sort by station name
+        int pos = Collections.binarySearch(stations, station);
+        if (pos < 0) pos = -(pos + 1);
+        stations.add(pos, station);
     }
 
     @Override

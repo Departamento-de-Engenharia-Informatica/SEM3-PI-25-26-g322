@@ -6,7 +6,7 @@ FR,"('Europe/Paris',)",CET,Digne-les-Bains,44.35,6.35,True,False,False
 FR,"('Europe/Paris',)",CET,Digne-les-Bains,44.088710133980605,6.222982406616211,False,True,False
 FR,"('Europe/Paris',)",CET,La Crau,43.1449352,6.0687663,False,False,False
 ES,"('Europe/Madrid',)",CET,Barcelona Sants,41.3809,2.1407,True,True,False
-ES,"('Europe/Madrid',)",CET,Barcelona El Prat Airport,41.2974,2.0833,False,False,True
+ES,"('Europe/Madrid',)",CET,Barcelona NotSants,41.3809,2.1407,True,True,False
 DE,"('Europe/Berlin',)",CET,Berlin Hbf,52.5251,13.3694,True,True,False
 DE,"('Europe/Berlin',)",CET,Munich Hbf,48.1402,11.5583,True,True,False
 IT,"('Europe/Rome',)",CET,Roma Termini,41.9010,12.5010,True,True,False

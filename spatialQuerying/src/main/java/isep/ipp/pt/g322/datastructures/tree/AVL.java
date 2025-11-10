@@ -1,5 +1,8 @@
 package isep.ipp.pt.g322.datastructures.tree;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  *
  * @author DEI-ESINF
@@ -64,6 +67,26 @@ public class AVL <E extends Comparable<E>> extends BST<E> {
         return node;
     }
 
+    public E find(E element) {
+        Node<E> node = find(root, element);
+        return (node != null) ? node.getElement() : null;
+    }
+
+    protected Node<E> find(Node<E> node, E element){
+        if(node == null) {
+            return null;
+        }
+        int cmp = element.compareTo(node.getElement());
+        if(cmp == 0) {
+            return node;
+        }
+        if(cmp < 0) {
+            return find(node.getLeft(), element);
+        }
+        return find(node.getRight(), element);
+    }
+
+
     @Override
     public void insert(E element){
         root = insert(element, root);
@@ -85,6 +108,23 @@ public class AVL <E extends Comparable<E>> extends BST<E> {
             }
         }
         return node;
+    }
+
+    public List<E> findRange(E min, E max) {
+        List<E> result = new ArrayList<>();
+        findRange(root, min, max, result);
+        return result;
+    }
+
+    private void findRange(Node<E> node, E min, E max, List<E> result) {
+        if (node == null) return;
+
+        int cmpMin = node.getElement().compareTo(min);
+        int cmpMax = node.getElement().compareTo(max);
+
+        if (cmpMin > 0) findRange(node.getLeft(), min, max, result);
+        if (cmpMin >= 0 && cmpMax <= 0) result.add(node.getElement());
+        if (cmpMax < 0) findRange(node.getRight(), min, max, result);
     }
 
     @Override

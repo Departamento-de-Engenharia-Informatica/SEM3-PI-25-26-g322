@@ -60,7 +60,7 @@ class StationManagerTest {
         assertTrue(size > 0, "Latitude index should have entries");
         assertTrue(size <= manager.getValidStations(),
                 "Unique latitudes should be <= total stations");
-        assertEquals(25, size, "Should have 25 unique latitudes");
+        assertEquals(24, size, "Should have 24 unique latitudes");
     }
 
     @Test
@@ -71,7 +71,7 @@ class StationManagerTest {
         assertTrue(size > 0, "Longitude index should have entries");
         assertTrue(size <= manager.getValidStations(),
                 "Unique longitudes should be <= total stations");
-        assertEquals(25, size, "Should have 25 unique longitudes");
+        assertEquals(24, size, "Should have 24 unique longitudes");
     }
 
     @Test
@@ -138,6 +138,8 @@ class StationManagerTest {
         manager.loadStationsFromCSV("/test_stations.csv");
 
         List<Station> stations = manager.getStationsByTimeZoneGroup("CET");
+
+        System.out.println(stations);
 
         if (stations.size() > 1) {
             for (int i = 0; i < stations.size() - 1; i++) {

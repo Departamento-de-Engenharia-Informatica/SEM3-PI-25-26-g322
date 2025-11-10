@@ -139,8 +139,6 @@ class StationManagerTest {
 
         List<Station> stations = manager.getStationsByTimeZoneGroup("CET");
 
-        System.out.println(stations);
-
         if (stations.size() > 1) {
             for (int i = 0; i < stations.size() - 1; i++) {
                 assertTrue(stations.get(i).getStation().compareTo(stations.get(i + 1).getStation()) <= 0,
@@ -149,7 +147,6 @@ class StationManagerTest {
         }
     }
 
-    // Query Tests - getStationsByTimeZoneWindow
     @Test
     void testGetStationsByTimeZoneWindow_MultipleZones() {
         manager.loadStationsFromCSV("/test_stations.csv");
@@ -161,7 +158,6 @@ class StationManagerTest {
         assertFalse(stations.isEmpty());
         assertTrue(stations.size() >= 14, "Should have at least 14 stations in CET and WET/GMT combined");
 
-        // Verify all stations are in one of the specified timezones
         for (Station station : stations) {
             assertTrue(station.getTimeZoneGroup().equals("CET") ||
                     station.getTimeZoneGroup().equals("WET/GMT"));

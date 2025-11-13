@@ -1,4 +1,4 @@
-package isep.ipp.pt.g322.service;
+package isep.ipp.pt.g322.Service;
 
 import isep.ipp.pt.g322.model.Station;
 

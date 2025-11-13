@@ -3,15 +3,15 @@ package isep.ipp.pt.g322.model;
 import java.util.Objects;
 
 public class Station implements Comparable<Station> {
-    private String station;
-    private double latitude;
-    private double longitude;
-    private String country;
-    private String timeZone;
-    private String timeZoneGroup;
-    private boolean isCity;
-    private boolean isMainStation;
-    private boolean isAirport;
+    private final String station;
+    private final double latitude;
+    private final double longitude;
+    private final String country;
+    private final String timeZone;
+    private final String timeZoneGroup;
+    private final boolean isCity;
+    private final boolean isMainStation;
+    private final boolean isAirport;
 
     public Station(String station, double latitude, double longitude, String country,
                    String timeZone, String timeZoneGroup, boolean isCity,

@@ -98,4 +98,62 @@ public class KdTree {
             this.stationsAtPoint = stationsAtPoint;
         }
     }
+
+    public static class Stats {
+
+        public final int nodeCount;
+
+        public final int height;
+
+        public final Map<Integer, Integer> bucketHistogram;
+
+        public Stats(int nodeCount, int height, Map<Integer, Integer> bucketHistogram) {
+            this.nodeCount = nodeCount;
+            this.height = height;
+            this.bucketHistogram = bucketHistogram;
+        }
+    }
+
+
+    public Stats computeStats() {
+        Map<Integer, Integer> histogram = new HashMap<>();
+        StatAcc acc = computeStatsRecursive(root, histogram);
+        return new Stats(acc.nodes, acc.height, histogram);
+    }
+
+
+    private static class StatAcc {
+        final int nodes;
+        final int height;
+
+        StatAcc(int nodes, int height) {
+            this.nodes = nodes;
+            this.height = height;
+        }
+    }
+
+    private StatAcc computeStatsRecursive(KdNode node, Map<Integer, Integer> histogram) {
+
+        if (node == null) {
+            return new StatAcc(0, 0);
+        }
+
+
+        int bucketSize = (node.stationsAtPoint == null ? 0 : node.stationsAtPoint.size());
+        histogram.merge(bucketSize, 1, Integer::sum);
+
+
+        StatAcc left  = computeStatsRecursive(node.left,  histogram);
+        StatAcc right = computeStatsRecursive(node.right, histogram);
+
+        int nodes  = 1 + left.nodes + right.nodes;
+        int height = 1 + Math.max(left.height, right.height); // folha -> height = 1
+
+        return new StatAcc(nodes, height);
+    }
+
+
+    public Map<Integer, Integer> bucketSizeHistogram() {
+        return computeStats().bucketHistogram;
+    }
 }

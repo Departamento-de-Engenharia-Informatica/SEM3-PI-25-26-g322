@@ -1,6 +1,7 @@
 package isep.ipp.pt.g322.model;
 
 import isep.ipp.pt.g322.datastructures.tree.AVL;
+import isep.ipp.pt.g322.datastructures.tree.KdTree;
 
 import java.io.*;
 import java.util.*;
@@ -296,5 +297,11 @@ public class StationManager {
         sb.append("   - Could be optimized with range search to O(log k + m)\n");
 
         return sb.toString();
+    }
+
+    public KdTree buildKdTreeFromIndices() {
+        List<Station> allStations = getStationsByLatitudeRange(-90.0, 90.0);
+
+        return new KdTree(allStations);
     }
 }

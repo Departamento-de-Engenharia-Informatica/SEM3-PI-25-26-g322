@@ -10,44 +10,76 @@ import java.util.List;
 
 public class StationCsvLoader {
 
-
     public List<Station> load(String filename) throws IOException {
         List<Station> stations = new ArrayList<>();
 
         try (BufferedReader br = new BufferedReader(new FileReader(filename))) {
-            String header = br.readLine(); 
+            String header = br.readLine();
+            if (header == null) {
+                return stations;
+            }
+
+
+            String delimiter = header.contains(";") ? ";" : ",";
+
+            String[] cols = header.split(delimiter, -1);
+
+            int idxCountry   = indexOf(cols, "country");
+            int idxStation   = indexOf(cols, "station");
+            int idxLat       = indexOf(cols, "latitude", "lat");
+            int idxLon       = indexOf(cols, "longitude", "lon");
+            int idxTimeZone  = indexOf(cols, "time_zone", "tz");
+            int idxTzGroup   = indexOf(cols, "time_zone_group", "tzGroup");
+            int idxIsCity    = indexOf(cols, "is_city", "isCity");
+            int idxIsMain    = indexOf(cols, "is_main_station", "isMain", "is_main");
+            int idxIsAirport = indexOf(cols, "is_airport", "airport", "isAirport");
+
+
+
+            if (idxCountry < 0 || idxStation < 0 || idxLat < 0 || idxLon < 0) {
+                throw new IOException("Missing mandatory columns in header");
+            }
+
             String line;
             int lineNo = 1;
 
             while ((line = br.readLine()) != null) {
                 lineNo++;
 
+                if (line.isBlank()) continue;
 
-                String[] f = line.split(";", -1);
 
-                if (f.length < 5) {
-                    System.out.println("Ignoring line " + lineNo + ": not enough columns");
+                line = line.replace("\"('", "")
+                        .replace("',)\"", "");
+
+                String[] f = line.split(delimiter, -1);
+
+                String name      = getField(f, idxStation);
+                String country   = getField(f, idxCountry);
+                String latStr    = getField(f, idxLat);
+                String lonStr    = getField(f, idxLon);
+                String timeZone  = idxTimeZone >= 0 ? getField(f, idxTimeZone) : "";
+                String tzGroup   = idxTzGroup >= 0 ? getField(f, idxTzGroup) : "";
+
+
+                if (name.isBlank() || country.isBlank()
+                        || latStr.isBlank() || lonStr.isBlank()) {
+                    System.out.println("Ignoring line " + lineNo + ": mandatory field empty");
                     continue;
                 }
 
-                String name = f[0].trim();
-                String country = f[1].trim();
-                String timeZone = f[2].trim();
-                String timeZoneGroup = f[3].trim();
-                double lat;
-                double lon;
+                double lat, lon;
                 try {
-                    lat = Double.parseDouble(f[4].trim());
-                    lon = Double.parseDouble(f[5].trim());
-                } catch (Exception e) {
+                    lat = Double.parseDouble(latStr);
+                    lon = Double.parseDouble(lonStr);
+                } catch (NumberFormatException e) {
                     System.out.println("Ignoring line " + lineNo + ": bad lat/lon");
                     continue;
                 }
 
-
-                boolean isCity = f.length > 6 && f[6].trim().equalsIgnoreCase("true");
-                boolean isMain = f.length > 7 && f[7].trim().equalsIgnoreCase("true");
-                boolean isAirport = f.length > 8 && f[8].trim().equalsIgnoreCase("true");
+                boolean isCity    = idxIsCity    >= 0 && parseBool(getField(f, idxIsCity));
+                boolean isMain    = idxIsMain    >= 0 && parseBool(getField(f, idxIsMain));
+                boolean isAirport = idxIsAirport >= 0 && parseBool(getField(f, idxIsAirport));
 
                 Station s = new Station(
                         name,
@@ -55,7 +87,7 @@ public class StationCsvLoader {
                         lon,
                         country,
                         timeZone,
-                        timeZoneGroup,
+                        tzGroup,
                         isCity,
                         isMain,
                         isAirport
@@ -71,5 +103,29 @@ public class StationCsvLoader {
         }
 
         return stations;
+    }
+
+
+
+    private static int indexOf(String[] cols, String... names) {
+        for (int i = 0; i < cols.length; i++) {
+            String col = cols[i].trim().toLowerCase();
+            for (String n : names) {
+                if (col.equals(n.toLowerCase())) {
+                    return i;
+                }
+            }
+        }
+        return -1;
+    }
+
+    private static String getField(String[] f, int idx) {
+        if (idx < 0 || idx >= f.length) return "";
+        return f[idx].trim();
+    }
+
+    private static boolean parseBool(String s) {
+        String v = s.trim().toLowerCase();
+        return v.equals("true") || v.equals("t") || v.equals("1");
     }
 }

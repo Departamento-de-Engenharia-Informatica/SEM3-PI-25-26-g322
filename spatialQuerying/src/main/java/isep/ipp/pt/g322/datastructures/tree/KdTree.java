@@ -6,8 +6,73 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class KdTree {
+    /**
+     * US08 — Queries de exemplo:
+     *
+     * // 1. Todas as estações em Portugal na região do Porto (apenas cidades)
+     * List<Station> q1 = kdTree.searchRegion(41.1, 41.3, -8.7, -8.5, true, null, "PT");
+     *
+     * // 2. Estações principais na Espanha dentro da área de Madrid
+     * List<Station> q2 = kdTree.searchRegion(40.3, 40.6, -3.9, -3.5, null, true, "ES");
+     *
+     * // 3. Todas as estações no retângulo, qualquer país, não cidades
+     * List<Station> q3 = kdTree.searchRegion(39.0, 42.0, -9.0, -2.0, false, null, "all");
+     *
+     * // 4. Todas as estações na região de Lisboa, qualquer tipo
+     * List<Station> q4 = kdTree.searchRegion(38.7, 38.8, -9.2, -9.0, null, null, "PT");
+     *
+     * // 5. Todas as estações na caixa delimitadora, sem filtros
+     * List<Station> q5 = kdTree.searchRegion(36.0, 44.0, -10.0, 4.0, null, null, null);
+     */
 
     private final KdNode root;
+        /**
+         * @param latMin 
+         * @param latMax 
+         * @param lonMin
+         * @param lonMax 
+         * @param isCity 
+         * @param isMainStation
+         * @param country
+         * @return 
+         */
+        public List<Station> searchRegion(double latMin, double latMax, double lonMin, double lonMax,
+                                          Boolean isCity, Boolean isMainStation, String country) {
+            List<Station> result = new ArrayList<>();
+            searchRegionRecursive(root, latMin, latMax, lonMin, lonMax, isCity, isMainStation, country, result);
+            return result;
+        }
+
+        private void searchRegionRecursive(KdNode node, double latMin, double latMax, double lonMin, double lonMax,
+                                           Boolean isCity, Boolean isMainStation, String country, List<Station> result) {
+            if (node == null) return;
+            // Prune if node is outside region
+            if (node.lat < latMin || node.lat > latMax || node.lon < lonMin || node.lon > lonMax) {
+                // Check which side to recurse
+                if (node.axis == 0) { // latitude split
+                    if (node.lat > latMax) searchRegionRecursive(node.left, latMin, latMax, lonMin, lonMax, isCity, isMainStation, country, result);
+                    else if (node.lat < latMin) searchRegionRecursive(node.right, latMin, latMax, lonMin, lonMax, isCity, isMainStation, country, result);
+                } else { // longitude split
+                    if (node.lon > lonMax) searchRegionRecursive(node.left, latMin, latMax, lonMin, lonMax, isCity, isMainStation, country, result);
+                    else if (node.lon < lonMin) searchRegionRecursive(node.right, latMin, latMax, lonMin, lonMax, isCity, isMainStation, country, result);
+                }
+                return;
+            }
+            // Node is inside region
+            for (Station s : node.stationsAtPoint) {
+                // Apply filters
+                boolean matchesCity = (isCity == null) || (s.isCity() == isCity);
+                boolean matchesMain = (isMainStation == null) || (s.isMainStation() == isMainStation);
+                boolean matchesCountry = (country == null) || country.equalsIgnoreCase("all") || s.getCountry().equalsIgnoreCase(country);
+                
+                if (matchesCity && matchesMain && matchesCountry) {
+                    result.add(s);
+                }
+            }
+            // Recurse both sides
+            searchRegionRecursive(node.left, latMin, latMax, lonMin, lonMax, isCity, isMainStation, country, result);
+            searchRegionRecursive(node.right, latMin, latMax, lonMin, lonMax, isCity, isMainStation, country, result);
+        }
 
     public KdTree(List<Station> stations) {
 

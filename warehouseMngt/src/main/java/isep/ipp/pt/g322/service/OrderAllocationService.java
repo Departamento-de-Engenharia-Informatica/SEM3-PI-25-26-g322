@@ -56,17 +56,19 @@ public class OrderAllocationService {
 
                 int remainingQty = requestedQty;
                 while (remainingQty > 0) {
-                    // Find a bay with available boxes for this SKU
+                    // 1. Encontrar baía com caixas do SKU
                     try {
                         Location loc = inventoryService.findAvailableLocationForSKU(sku);
-                        // Get the box with FEFO in this location
+                        // 2. Obter primeira caixa (FEFO) nessa baía
                         Box box = state.bayBoxes.get(loc) != null && !state.bayBoxes.get(loc).isEmpty()
                                 ? state.bayBoxes.get(loc).first() : null;
                         if (box == null || !box.getSKU().equalsIgnoreCase(sku) || box.getQuantity() == 0) {
                             break;
                         }
+                        // 3. Alocar min(quantidade_restante, quantidade_disponível)
                         int allocQty = Math.min(box.getQuantity(), remainingQty);
                         if (allocQty > 0) {
+                        // 4. Criar registo de alocação
                             Allocation alloc = new Allocation(
                                     order.getOrderID(),
                                     lineNumber,
@@ -79,7 +81,7 @@ public class OrderAllocationService {
                                     order.getDueDate()
                             );
                             tempAllocations.add(alloc);
-                            // Dispatch from inventory
+                            // 5. Despachar do inventário (atualiza quantidade, remove se vazia)
                             inventoryService.dispatch(sku, allocQty);
                             allocatedQty += allocQty;
                             remainingQty -= allocQty;
@@ -87,7 +89,7 @@ public class OrderAllocationService {
                             break;
                         }
                     } catch (Exception e) {
-                        // No more available boxes for this SKU
+                        // Nao ha mais caixas disponiveis para este SKU
                         break;
                     }
                 }

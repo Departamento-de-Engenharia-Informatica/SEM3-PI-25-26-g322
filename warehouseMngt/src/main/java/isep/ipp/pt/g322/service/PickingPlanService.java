@@ -19,12 +19,13 @@ public class PickingPlanService {
     public void populateUnitWeight(List<Allocation> allocations) throws ValidationException {
         ItemService itemService = new ItemService();
         Map<String, Item> itemMap = itemService.getItemBySKU();
-
+        
         for (Allocation allocation : allocations) {
             String sku = allocation.getSku();
             Item item = itemMap.get(sku);
 
             if (item != null) {
+                // Define o peso unitário na alocação
                 allocation.setUnitWeight(item.getUnitWeight());
             } else {
                 System.out.println("Warning: SKU not found in itemMap -> " + sku);

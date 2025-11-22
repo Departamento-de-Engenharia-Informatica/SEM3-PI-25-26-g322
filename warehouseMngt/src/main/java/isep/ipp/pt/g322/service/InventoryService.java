@@ -135,6 +135,7 @@ public class InventoryService {
 
         // 3) Atualizar índice sku->bays (remover oldLoc)
         SortedMap<Integer, Set<Location>> map = state.skuToBays.get(b.getSKU());
+        //Verificar se este SKU ainda tem boxes em algum bay antigo
         if (map != null) {
             Set<Location> lst = map.get(oldLoc.getBay());
             if (lst != null) {
@@ -161,11 +162,16 @@ public class InventoryService {
         // 1) Se já existe SKU, tentar primeiro bays dela que ainda tenham espaço
         SortedMap<Integer, ? extends Collection<Location>> map = state.skuToBays.get(sku);
 
-
+        //Verificar se este SKU ainda tem boxes em algum bay antigo
         if (map != null) {
+            //itera pelos conjusntos de locations por ordem crescente do numero do bay
             for (Collection<Location> locs : map.values()) {
+                //Itera pelas locations daquele bay para cada numero de bay
                 for (Location loc : locs) {
+                    //Obtem os metadados do bay
                     BayMeta meta = state.bays.get(loc);
+                    //Obtem as boxes naquele bay 
+                    //FEFO                                 //Retorna vazio se nao tiver boxes
                     NavigableSet<Box> boxes = state.bayBoxes.getOrDefault(loc, new TreeSet<>(FEFO));
                     if (meta != null && boxes.size() < meta.getCapacityBoxes()) {
                         return loc;

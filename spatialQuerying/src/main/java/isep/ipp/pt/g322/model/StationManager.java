@@ -296,6 +296,13 @@ public class StationManager {
         sb.append("   - Time: O(k) for in-order traversal\n");
         sb.append("   - Could be optimized with range search to O(log k + m)\n");
 
+        sb.append("\n5. US08 - Geographical Rectangle Search (KD-Tree):\n");
+        sb.append("   - Construction: O(n log n) where n is the number of stations\n");
+        sb.append("   - Search (average case): O(log n + k) where k is the number of results\n");
+        sb.append("   - Search (worst case): O(n) if all nodes are visited\n");
+        sb.append("   - Pruning optimization: Avoids scanning subtrees outside region\n");
+        sb.append("   - Space: O(n) for storing the KD-tree structure\n");
+
         return sb.toString();
     }
 
@@ -303,5 +310,47 @@ public class StationManager {
         List<Station> allStations = getStationsByLatitudeRange(-90.0, 90.0);
 
         return new KdTree(allStations);
+    }
+
+    /**
+     * Metodido para carregar estações diretamente para uma KD-Tree a partir de um ficheiro CSV.
+     * Usar apenas para spacial queries (US08) sem necessidade dos índices AVL.
+     */
+    public KdTree loadStationsDirectlyToKdTree(String csvFilePath) {
+        List<Station> stations = new ArrayList<>();
+        String line;
+        boolean isFirstLine = true;
+
+        try (InputStream inputStream = getClass().getResourceAsStream(csvFilePath);
+             BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))) {
+
+            if (inputStream == null) {
+                System.err.println("Resource not found: " + csvFilePath);
+                return null;
+            }
+
+            while ((line = br.readLine()) != null) {
+                if (isFirstLine) {
+                    isFirstLine = false;
+                    continue;
+                }
+
+                String[] values = line.split(",");
+                try {
+                    Station station = parseStation(values);
+                    if (station.isValid()) {
+                        stations.add(station);
+                        validStations++;
+                    }
+                } catch (Exception e) {
+                    // Skip invalid stations
+                }
+            }
+        } catch (IOException e) {
+            System.err.println("Error reading CSV file: " + e.getMessage());
+            return null;
+        }
+
+        return new KdTree(stations);
     }
 }

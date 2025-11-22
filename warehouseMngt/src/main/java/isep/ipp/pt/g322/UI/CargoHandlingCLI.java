@@ -2,6 +2,8 @@ package isep.ipp.pt.g322.UI;
 
 import isep.ipp.pt.g322.service.*;
 import isep.ipp.pt.g322.model.*;
+import isep.ipp.pt.g322.datastructures.tree.KdTree;
+import isep.ipp.pt.g322.model.StationManager;
 
 import java.util.*;
 
@@ -27,6 +29,9 @@ public class CargoHandlingCLI {
     private List<Box> boxes;
     private OrderAllocationResult allocationResult;
     private List<Trolley> trolleyPlan;
+
+    private StationManager stationManager;
+    private KdTree kdTree;
 
     private final Scanner scanner = new Scanner(System.in);
 
@@ -56,6 +61,8 @@ public class CargoHandlingCLI {
                         running = false;
                         continue;
                     }
+                    case "9" -> runSpatialStationQuery();
+                    case "10" -> showComplexityAnalysis();
                     default -> System.out.println("Invalid choice. Please try again.");
                 }
             } catch (ValidationException ve) {
@@ -99,6 +106,8 @@ public class CargoHandlingCLI {
         System.out.println("6) Toggle allocation mode (strict / partial)");
         System.out.println("7) Reload / clear in-memory data");
         System.out.println("8) Exit");
+        System.out.println("9) Search stations by geographical area (US08)");
+        System.out.println("10) Show complexity analysis");
         System.out.print("Your choice: ");
     }
 
@@ -159,6 +168,18 @@ public class CargoHandlingCLI {
         }
         allocationResult = null;
         trolleyPlan = null;
+
+        // US08: Load stations for spatial queries (optimized - direct to KD-tree)
+        try {
+            stationManager = new StationManager();
+            kdTree = stationManager.loadStationsDirectlyToKdTree("/train_stations_europe.csv");
+            
+            if (kdTree != null) {
+                System.out.println("[OK] Stations loaded for spatial queries");
+            }
+        } catch (Exception e) {
+            System.out.println("[ERROR] Could not load stations: " + e.getMessage());
+        }
     }
 
     // Distribute loaded boxes across bays in round-robin fashion (like colleagues)
@@ -363,11 +384,61 @@ public class CargoHandlingCLI {
         }
     }
 
+    private void runSpatialStationQuery() {
+        if (kdTree == null) {
+            System.out.println("Station KD-tree not loaded. Please run option 1 to load data first.");
+            return;
+        }
+        try {
+            System.out.println("Enter latitude min:");
+            double latMin = Double.parseDouble(scanner.nextLine().trim());
+            System.out.println("Enter latitude max:");
+            double latMax = Double.parseDouble(scanner.nextLine().trim());
+            System.out.println("Enter longitude min:");
+            double lonMin = Double.parseDouble(scanner.nextLine().trim());
+            System.out.println("Enter longitude max:");
+            double lonMax = Double.parseDouble(scanner.nextLine().trim());
+
+            System.out.println("Filter by city? (true/false/skip):");
+            String cityInput = scanner.nextLine().trim().toLowerCase();
+            Boolean isCity = cityInput.equals("true") ? Boolean.TRUE : cityInput.equals("false") ? Boolean.FALSE : null;
+
+            System.out.println("Filter by main station? (true/false/skip):");
+            String mainInput = scanner.nextLine().trim().toLowerCase();
+            Boolean isMain = mainInput.equals("true") ? Boolean.TRUE : mainInput.equals("false") ? Boolean.FALSE : null;
+
+            System.out.println("Filter by country? (PT/ES/all/skip):");
+            String countryInput = scanner.nextLine().trim().toUpperCase();
+            String country = (countryInput.equals("SKIP") || countryInput.isEmpty()) ? null : countryInput;
+
+            List<Station> results = kdTree.searchRegion(latMin, latMax, lonMin, lonMax, isCity, isMain, country);
+            System.out.printf("Found %d stations in region.%n", results.size());
+            for (int i = 0; i < Math.min(results.size(), 20); i++) {
+                Station s = results.get(i);
+                System.out.printf("%3d. %-40s | Country: %-3s | Lat: %8.4f | Lon: %8.4f | City: %-5s | Main: %-5s%n",
+                        (i + 1), s.getStation(), s.getCountry(), s.getLatitude(), s.getLongitude(), s.isCity(), s.isMainStation());
+            }
+            if (results.size() > 20) {
+                System.out.printf("... and %d more results\n", results.size() - 20);
+            }
+        } catch (Exception e) {
+            System.out.println("[ERROR] Invalid input or search failed: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
     private String optionalInt(Integer v) {
         return v == null ? "null" : String.valueOf(v);
     }
 
     private String optionalInt(int v) {
         return v == 0 ? "0" : String.valueOf(v);
+    }
+
+    private void showComplexityAnalysis() {
+        if (stationManager == null) {
+            stationManager = new StationManager();
+        }
+        System.out.println("\n" + stationManager.getComplexityAnalysis());
     }
 }

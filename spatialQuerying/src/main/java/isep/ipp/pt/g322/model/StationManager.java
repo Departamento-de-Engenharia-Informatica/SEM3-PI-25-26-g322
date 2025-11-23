@@ -1,6 +1,7 @@
 package isep.ipp.pt.g322.model;
 
 import isep.ipp.pt.g322.datastructures.tree.AVL;
+import isep.ipp.pt.g322.datastructures.tree.KDTree2;
 import isep.ipp.pt.g322.datastructures.tree.KdTree;
 
 import java.io.*;
@@ -10,6 +11,9 @@ public class StationManager {
     private AVL<LatitudeKey> latitudeIndex;
     private AVL<LongitudeKey> longitudeIndex;
     private AVL<TimezoneCountryKey> timezoneCountryIndex;
+    private KdTree spatialIndex;
+    private KDTree2 spatialIndex2;
+    private KDTree2Stats kdTree2Stats;
 
     private int totalStations;
     private int validStations;
@@ -53,6 +57,7 @@ public class StationManager {
 
                     if (station.isValid()) {
                         addStationToIndices(station);
+                        System.out.println(totalStations);
                         validStations++;
                     } else {
                         invalidStations++;
@@ -274,6 +279,65 @@ public class StationManager {
         }
     }
 
+    /* US07 - Helder*/
+    public void buildSpatialIndex() {
+        if (latitudeIndex.size() == 0 || longitudeIndex.size() == 0) {
+            throw new IllegalStateException("AVL indices must be populated before building KD-Tree");
+        }
+
+        System.out.println("Building 2D-Tree from AVL indices...");
+        long startTime = System.nanoTime(); // just for console feedback purposes
+
+        this.spatialIndex2 = new KDTree2(latitudeIndex, longitudeIndex);
+
+        long endTime = System.nanoTime();
+        double elapsedMs = (endTime - startTime) / 1_000_000.0;
+
+        System.out.printf("2D-Tree built in %.2f ms%n", elapsedMs);
+    }
+
+    public KDTree2Stats getSpatialIndexStatistics() {
+        if (spatialIndex2 == null) {
+            throw new IllegalStateException("Spatial index not built yet. Call buildSpatialIndex() first.");
+        }
+
+        int size = spatialIndex2.size();
+        int height = spatialIndex2.height();
+        Map<Integer, Integer> bucketDistribution = spatialIndex2.getBucketSizeDistribution();
+
+        return new KDTree2Stats(size, height, bucketDistribution);
+    }
+
+    public void printSpatialIndexStatistics() {
+        if (spatialIndex2 == null) {
+            System.out.println("Spatial index not built yet.");
+            return;
+        }
+
+        KDTree2Stats stats = getSpatialIndexStatistics();
+
+        System.out.println("=== 2D-Tree (KD-Tree) Statistics ===");
+        System.out.println("Tree size (nodes): " + stats.size);
+        System.out.println("Tree height: " + stats.height);
+
+        System.out.println("\nBucket Size Distribution:");
+        System.out.println("(Stations per coordinate point)");
+
+        int totalStationsInTree = 0;
+        for (Map.Entry<Integer, Integer> entry : stats.bucketDistribution.entrySet()) {
+            int stationsPerPoint = entry.getKey();
+            int numberOfPoints = entry.getValue();
+            int stationsInThisBucket = stationsPerPoint * numberOfPoints;
+
+            System.out.printf("  %2d station(s) per point: %5d point(s) (%6d stations total)%n",
+                    stationsPerPoint, numberOfPoints, stationsInThisBucket);
+
+            totalStationsInTree += stationsInThisBucket;
+        }
+
+        System.out.println("\nTotal stations in tree: " + totalStationsInTree);
+        System.out.println("Unique coordinate points: " + stats.size);
+    }
 
     public String getComplexityAnalysis() {
         StringBuilder sb = new StringBuilder();
@@ -296,15 +360,80 @@ public class StationManager {
         sb.append("   - Time: O(k) for in-order traversal\n");
         sb.append("   - Could be optimized with range search to O(log k + m)\n");
 
-        sb.append("\n5. US08 - Geographical Rectangle Search (KD-Tree):\n");
+        sb.append("\n5. US07 - 2D-Tree Construction (Bulk Build):\n");
+        sb.append("   - Extraction from AVL trees: O(n) in-order traversal\n");
+        sb.append("   - Coordinate grouping: O(n) with HashMap\n");
+        sb.append("   - Sorting by both dimensions: O(n log n)\n");
+        sb.append("   - Recursive build: O(n) with pre-sorted lists\n");
+        sb.append("   - TOTAL: O(n log n) where n is unique coordinate points\n");
+        sb.append("   - Space: O(n) for two sorted lists + coordinate map\n");
+        sb.append("   - Result: Balanced tree with height ≈ log₂(n)\n");
+
+        sb.append("\n6. US08 - Geographical Rectangle Search (KD-Tree):\n");
         sb.append("   - Construction: O(n log n) where n is the number of stations\n");
         sb.append("   - Search (average case): O(log n + k) where k is the number of results\n");
         sb.append("   - Search (worst case): O(n) if all nodes are visited\n");
         sb.append("   - Pruning optimization: Avoids scanning subtrees outside region\n");
         sb.append("   - Space: O(n) for storing the KD-tree structure\n");
 
+        sb.append("\n7. US09 - Proximity Search with Filters:\n");
+        sb.append("   a) K-nearest neighbors without filter:\n");
+        sb.append("      - Average: O(log n + k) where k is number of neighbors\n");
+        sb.append("      - Worst: O(n) in degenerate cases\n");
+        sb.append("   \n");
+        sb.append("   b) K-nearest neighbors WITH filter:\n");
+        sb.append("      - Average: O(log n + m) where m is nodes visited\n");
+        sb.append("      - m ≥ k because some nodes won't match filter\n");
+        sb.append("      - Worst: O(n) if filter is very selective\n");
+        sb.append("      - Pruning: Skip subtrees that can't contain closer matches\n");
+        sb.append("   \n");
+        sb.append("   c) Haversine distance calculation:\n");
+        sb.append("      - O(1) per distance computation\n");
+        sb.append("      - Uses Earth radius = 6371 km\n");
+        sb.append("   \n");
+        sb.append("   d) Filter efficiency:\n");
+        sb.append("      - Each station check: O(1) per criterion\n");
+        sb.append("      - Multiple criteria: Still O(1) per station\n");
+        sb.append("      - Trade-off: More nodes visited vs. filtered results\n");
+
+
         return sb.toString();
     }
+
+    /**
+     *  US09: Find k nearest stations
+     */
+    public List<KDTree2.StationDistance> kNearestStations(double lat, double lon, int k) {
+        if (spatialIndex2 == null) {
+            throw new IllegalStateException("Spatial index not built. Call buildSpatialIndex() first.");
+        }
+        return spatialIndex2.kNearestNeighbors(lat, lon, k);
+    }
+
+
+    /**
+     * US09: Find k nearest stations with optional timezone filter
+     */
+    public List<KDTree2.StationDistance> kNearestStationsWithTimezone(double lat, double lon,
+                                                                      int k, String timezoneFilter) {
+        if (spatialIndex2 == null) {
+            throw new IllegalStateException("Spatial index not built. Call buildSpatialIndex() first.");
+        }
+        return spatialIndex2.kNearestNeighborsWithFilter(lat, lon, k, timezoneFilter);
+    }
+
+    /**
+     * US09: Find k nearest stations with multiple filter criteria
+     */
+    public List<KDTree2.StationDistance> kNearestStationsWithCriteria(double lat, double lon,
+                                                                      int k,
+                                                                      KDTree2.StationFilterCriteria criteria) {
+        if (spatialIndex2 == null) {
+            throw new IllegalStateException("Spatial index not built. Call buildSpatialIndex() first.");
+        }
+        return spatialIndex2.kNearestNeighborsWithCriteria(lat, lon, k, criteria);
+    }
+
 
     public KdTree buildKdTreeFromIndices() {
         List<Station> allStations = getStationsByLatitudeRange(-90.0, 90.0);

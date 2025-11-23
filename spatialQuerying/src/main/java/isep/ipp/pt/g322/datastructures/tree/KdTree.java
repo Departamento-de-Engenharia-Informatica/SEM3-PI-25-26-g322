@@ -105,7 +105,19 @@ public class KdTree {
         return root;
     }
 
+    public Map<Integer, Integer> getBucketSizeDistribution() {
+        Map<Integer, Integer> bucketSizeMap = new HashMap<>();
+        collectBucketSizes(root, bucketSizeMap);
+        return bucketSizeMap;
+    }
 
+    private void collectBucketSizes(KdNode n, Map<Integer, Integer> bucketSizeMap) {
+        if (n == null) return;
+        int size = n.stationsAtPoint.size();
+        bucketSizeMap.merge(size, 1, Integer::sum);
+        collectBucketSizes(n.left, bucketSizeMap);
+        collectBucketSizes(n.right, bucketSizeMap);
+    }
 
     private int size(KdNode n) {
         if (n == null) return 0;

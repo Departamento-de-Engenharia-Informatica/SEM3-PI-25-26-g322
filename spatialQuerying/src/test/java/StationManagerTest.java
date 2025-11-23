@@ -4,6 +4,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 import java.util.List;
+import isep.ipp.pt.g322.datastructures.tree.KDTree2;
+import isep.ipp.pt.g322.model.KDTree2Stats;
+
 
 class StationManagerTest {
     private StationManager manager;
@@ -364,5 +367,530 @@ class StationManagerTest {
         assertTrue(analysis.contains("Query by Time Zone Group"));
         assertTrue(analysis.contains("Query by Time Zone Window"));
         assertTrue(analysis.contains("Range queries"));
+    }
+
+    @Test
+    void testBuildSpatialIndex_Success() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+
+        assertDoesNotThrow(() -> manager.buildSpatialIndex(),
+                "Building spatial index should not throw exception");
+    }
+
+    @Test
+    void testBuildSpatialIndex_ThrowsExceptionWhenIndicesEmpty() {
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> manager.buildSpatialIndex(),
+                "Should throw exception when AVL indices are not populated");
+
+        assertTrue(exception.getMessage().contains("AVL indices must be populated"),
+                "Exception message should mention AVL indices");
+    }
+
+    @Test
+    void testBuildSpatialIndex_CanBeCalledMultipleTimes() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+
+        assertDoesNotThrow(() -> {
+            manager.buildSpatialIndex();
+            manager.buildSpatialIndex();
+        }, "Should be able to rebuild spatial index");
+    }
+
+    @Test
+    void testGetSpatialIndexStatistics_Success() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        KDTree2Stats stats = manager.getSpatialIndexStatistics();
+
+        assertNotNull(stats, "Statistics should not be null");
+        assertTrue(stats.size > 0, "Tree size should be greater than 0");
+        assertTrue(stats.height > 0, "Tree height should be greater than 0");
+        assertNotNull(stats.bucketDistribution, "Bucket distribution should not be null");
+        assertFalse(stats.bucketDistribution.isEmpty(), "Bucket distribution should not be empty");
+    }
+
+    @Test
+    void testGetSpatialIndexStatistics_ThrowsExceptionWhenNotBuilt() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> manager.getSpatialIndexStatistics(),
+                "Should throw exception when spatial index not built");
+
+        assertTrue(exception.getMessage().contains("not built yet"),
+                "Exception message should mention index not built");
+    }
+
+    @Test
+    void testGetSpatialIndexStatistics_ValidatesTreeStructure() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        KDTree2Stats stats = manager.getSpatialIndexStatistics();
+
+        int expectedMaxHeight = (int) Math.ceil(Math.log(stats.size) / Math.log(2)) * 2;
+        assertTrue(stats.height <= expectedMaxHeight,
+                "Tree height should be reasonably balanced: height=" + stats.height +
+                        ", size=" + stats.size + ", expected max=" + expectedMaxHeight);
+    }
+
+    @Test
+    void testGetSpatialIndexStatistics_BucketDistributionSumsToTreeSize() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        KDTree2Stats stats = manager.getSpatialIndexStatistics();
+        int totalPoints = stats.bucketDistribution.values().stream()
+                .mapToInt(Integer::intValue)
+                .sum();
+
+        assertEquals(stats.size, totalPoints,
+                "Sum of bucket distribution should equal tree size");
+    }
+
+    @Test
+    void testPrintSpatialIndexStatistics_DoesNotThrowException() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        assertDoesNotThrow(() -> manager.printSpatialIndexStatistics(),
+                "Printing statistics should not throw exception");
+    }
+
+    @Test
+    void testPrintSpatialIndexStatistics_BeforeBuilding() {
+        assertDoesNotThrow(() -> manager.printSpatialIndexStatistics(),
+                "Should handle case when index not built yet");
+    }
+
+    @Test
+    void testKNearestStations_FindsCorrectNumber() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        double lat = 41.1579;
+        double lon = -8.6291;
+        int k = 5;
+
+        List<KDTree2.StationDistance> results = manager.kNearestStations(lat, lon, k);
+
+        assertNotNull(results, "Results should not be null");
+        assertTrue(results.size() <= k, "Should return at most k stations");
+        assertTrue(results.size() > 0, "Should find at least one station");
+    }
+
+    @Test
+    void testKNearestStations_ResultsAreSortedByDistance() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        double lat = 48.8566;
+        double lon = 2.3522;
+        int k = 10;
+
+        List<KDTree2.StationDistance> results = manager.kNearestStations(lat, lon, k);
+
+        for (int i = 0; i < results.size() - 1; i++) {
+            assertTrue(results.get(i).distanceKm <= results.get(i + 1).distanceKm,
+                    "Results should be sorted by distance (ascending)");
+        }
+    }
+
+    @Test
+    void testKNearestStations_DistancesArePositive() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        double lat = 40.4168; // Madrid
+        double lon = -3.7038;
+        int k = 5;
+
+        List<KDTree2.StationDistance> results = manager.kNearestStations(lat, lon, k);
+
+        for (KDTree2.StationDistance sd : results) {
+            assertTrue(sd.distanceKm >= 0, "Distance should be non-negative");
+        }
+    }
+
+    @Test
+    void testKNearestStations_WithZeroK() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        List<KDTree2.StationDistance> results = manager.kNearestStations(41.0, -8.0, 0);
+
+        assertNotNull(results, "Results should not be null");
+        assertTrue(results.isEmpty(), "Should return empty list for k=0");
+    }
+
+    @Test
+    void testKNearestStations_WithNegativeK() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        List<KDTree2.StationDistance> results = manager.kNearestStations(41.0, -8.0, -5);
+
+        assertNotNull(results, "Results should not be null");
+        assertTrue(results.isEmpty(), "Should return empty list for negative k");
+    }
+
+    @Test
+    void testKNearestStations_ThrowsExceptionWhenNotBuilt() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> manager.kNearestStations(41.0, -8.0, 5),
+                "Should throw exception when spatial index not built");
+
+        assertTrue(exception.getMessage().contains("not built"),
+                "Exception message should mention index not built");
+    }
+
+    @Test
+    void testKNearestStations_LargeK() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        int k = 1000; // more than total stations
+        List<KDTree2.StationDistance> results = manager.kNearestStations(41.0, -8.0, k);
+
+        assertNotNull(results, "Results should not be null");
+        assertTrue(results.size() <= manager.getValidStations(),
+                "Should not return more stations than available");
+    }
+
+    @Test
+    void testKNearestStationsWithTimezone_FiltersCorrectly() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        double lat = 48.8566; // Paris
+        double lon = 2.3522;
+        int k = 10;
+        String timezone = "CET";
+
+        List<KDTree2.StationDistance> results = manager.kNearestStationsWithTimezone(lat, lon, k, timezone);
+
+        assertNotNull(results, "Results should not be null");
+        for (KDTree2.StationDistance sd : results) {
+            assertEquals(timezone, sd.station.getTimeZoneGroup(),
+                    "All results should match the timezone filter");
+        }
+    }
+
+    @Test
+    void testKNearestStationsWithTimezone_NullFilterReturnsAllStations() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        double lat = 41.0;
+        double lon = -8.0;
+        int k = 5;
+
+        List<KDTree2.StationDistance> withoutFilter = manager.kNearestStations(lat, lon, k);
+        List<KDTree2.StationDistance> withNullFilter = manager.kNearestStationsWithTimezone(lat, lon, k, null);
+
+        assertEquals(withoutFilter.size(), withNullFilter.size(),
+                "Null filter should behave like no filter");
+    }
+
+    @Test
+    void testKNearestStationsWithTimezone_ResultsAreSorted() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        List<KDTree2.StationDistance> results = manager.kNearestStationsWithTimezone(
+                48.8566, 2.3522, 10, "CET");
+
+        for (int i = 0; i < results.size() - 1; i++) {
+            assertTrue(results.get(i).distanceKm <= results.get(i + 1).distanceKm,
+                    "Results should be sorted by distance");
+        }
+    }
+
+    @Test
+    void testKNearestStationsWithTimezone_NonExistentTimezone() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        List<KDTree2.StationDistance> results = manager.kNearestStationsWithTimezone(
+                41.0, -8.0, 10, "NONEXISTENT_TZ");
+
+        assertNotNull(results, "Results should not be null");
+        assertTrue(results.isEmpty() || results.size() < 10,
+                "Should find fewer or no stations with non-existent timezone");
+    }
+
+    @Test
+    void testKNearestStationsWithTimezone_MayReturnFewerThanK() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        int k = 100;
+        List<KDTree2.StationDistance> results = manager.kNearestStationsWithTimezone(
+                41.0, -8.0, k, "WET");
+
+        assertNotNull(results, "Results should not be null");
+        assertTrue(results.size() <= k, "Should not exceed k stations");
+    }
+
+    @Test
+    void testKNearestStationsWithTimezone_ThrowsExceptionWhenNotBuilt() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> manager.kNearestStationsWithTimezone(41.0, -8.0, 5, "CET"),
+                "Should throw exception when spatial index not built");
+
+        assertTrue(exception.getMessage().contains("not built"),
+                "Exception message should mention index not built");
+    }
+
+    @Test
+    void testKNearestStationsWithCriteria_SingleCriterion() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        KDTree2.StationFilterCriteria criteria = new KDTree2.StationFilterCriteria()
+                .timezoneGroup("CET");
+
+        List<KDTree2.StationDistance> results = manager.kNearestStationsWithCriteria(
+                48.8566, 2.3522, 10, criteria);
+
+        assertNotNull(results, "Results should not be null");
+        for (KDTree2.StationDistance sd : results) {
+            assertEquals("CET", sd.station.getTimeZoneGroup(),
+                    "All results should match timezone criterion");
+        }
+    }
+
+    @Test
+    void testKNearestStationsWithCriteria_MultipleCriteria() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        KDTree2.StationFilterCriteria criteria = new KDTree2.StationFilterCriteria()
+                .timezoneGroup("CET")
+                .mainStationOnly(true);
+
+        List<KDTree2.StationDistance> results = manager.kNearestStationsWithCriteria(
+                48.8566, 2.3522, 10, criteria);
+
+        assertNotNull(results, "Results should not be null");
+        for (KDTree2.StationDistance sd : results) {
+            assertEquals("CET", sd.station.getTimeZoneGroup(),
+                    "All results should match timezone criterion");
+            assertTrue(sd.station.isMainStation(),
+                    "All results should be main stations");
+        }
+    }
+
+    @Test
+    void testKNearestStationsWithCriteria_CityOnly() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        KDTree2.StationFilterCriteria criteria = new KDTree2.StationFilterCriteria()
+                .cityOnly(true);
+
+        List<KDTree2.StationDistance> results = manager.kNearestStationsWithCriteria(
+                41.0, -8.0, 10, criteria);
+
+        assertNotNull(results, "Results should not be null");
+        for (KDTree2.StationDistance sd : results) {
+            assertTrue(sd.station.isCity(), "All results should be cities");
+        }
+    }
+
+    @Test
+    void testKNearestStationsWithCriteria_AirportOnly() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        KDTree2.StationFilterCriteria criteria = new KDTree2.StationFilterCriteria()
+                .airportOnly(true);
+
+        List<KDTree2.StationDistance> results = manager.kNearestStationsWithCriteria(
+                41.0, -8.0, 10, criteria);
+
+        assertNotNull(results, "Results should not be null");
+        for (KDTree2.StationDistance sd : results) {
+            assertTrue(sd.station.isAirport(), "All results should be airports");
+        }
+    }
+
+    @Test
+    void testKNearestStationsWithCriteria_CountryFilter() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        KDTree2.StationFilterCriteria criteria = new KDTree2.StationFilterCriteria()
+                .country("PT");
+
+        List<KDTree2.StationDistance> results = manager.kNearestStationsWithCriteria(
+                41.0, -8.0, 10, criteria);
+
+        assertNotNull(results, "Results should not be null");
+        for (KDTree2.StationDistance sd : results) {
+            assertEquals("PT", sd.station.getCountry(),
+                    "All results should be from Portugal");
+        }
+    }
+
+    @Test
+    void testKNearestStationsWithCriteria_NullCriteriaReturnsAll() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        double lat = 41.0;
+        double lon = -8.0;
+        int k = 5;
+
+        List<KDTree2.StationDistance> withoutFilter = manager.kNearestStations(lat, lon, k);
+        List<KDTree2.StationDistance> withNullCriteria = manager.kNearestStationsWithCriteria(
+                lat, lon, k, null);
+
+        assertEquals(withoutFilter.size(), withNullCriteria.size(),
+                "Null criteria should behave like no filter");
+    }
+
+    @Test
+    void testKNearestStationsWithCriteria_ResultsAreSorted() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        KDTree2.StationFilterCriteria criteria = new KDTree2.StationFilterCriteria()
+                .timezoneGroup("CET");
+
+        List<KDTree2.StationDistance> results = manager.kNearestStationsWithCriteria(
+                48.8566, 2.3522, 10, criteria);
+
+        for (int i = 0; i < results.size() - 1; i++) {
+            assertTrue(results.get(i).distanceKm <= results.get(i + 1).distanceKm,
+                    "Results should be sorted by distance");
+        }
+    }
+
+    @Test
+    void testKNearestStationsWithCriteria_RestrictiveCriteriaMayReturnFewer() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        KDTree2.StationFilterCriteria criteria = new KDTree2.StationFilterCriteria()
+                .timezoneGroup("CET")
+                .country("PT")
+                .mainStationOnly(true)
+                .airportOnly(true);
+
+        List<KDTree2.StationDistance> results = manager.kNearestStationsWithCriteria(
+                41.0, -8.0, 10, criteria);
+
+        assertNotNull(results, "Results should not be null");
+        assertTrue(results.size() <= 10, "Should not exceed requested k");
+    }
+
+    @Test
+    void testKNearestStationsWithCriteria_ComplexCombination() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        KDTree2.StationFilterCriteria criteria = new KDTree2.StationFilterCriteria()
+                .timezoneGroup("CET")
+                .cityOnly(true)
+                .mainStationOnly(false);
+
+        List<KDTree2.StationDistance> results = manager.kNearestStationsWithCriteria(
+                48.8566, 2.3522, 10, criteria);
+
+        assertNotNull(results, "Results should not be null");
+        for (KDTree2.StationDistance sd : results) {
+            assertEquals("CET", sd.station.getTimeZoneGroup());
+            assertTrue(sd.station.isCity());
+            assertFalse(sd.station.isMainStation());
+        }
+    }
+
+    @Test
+    void testKNearestStationsWithCriteria_ThrowsExceptionWhenNotBuilt() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+
+        KDTree2.StationFilterCriteria criteria = new KDTree2.StationFilterCriteria()
+                .timezoneGroup("CET");
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> manager.kNearestStationsWithCriteria(41.0, -8.0, 5, criteria),
+                "Should throw exception when spatial index not built");
+
+        assertTrue(exception.getMessage().contains("not built"),
+                "Exception message should mention index not built");
+    }
+
+    @Test
+    void testKNearestStationsWithCriteria_EmptyCriteriaEqualsNoCriteria() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        double lat = 41.0;
+        double lon = -8.0;
+        int k = 5;
+
+        KDTree2.StationFilterCriteria emptyCriteria = new KDTree2.StationFilterCriteria();
+
+        List<KDTree2.StationDistance> withEmpty = manager.kNearestStationsWithCriteria(
+                lat, lon, k, emptyCriteria);
+        List<KDTree2.StationDistance> withoutFilter = manager.kNearestStations(lat, lon, k);
+
+        assertEquals(withoutFilter.size(), withEmpty.size(),
+                "Empty criteria should return same as no filter");
+    }
+
+    @Test
+    void testKNearestStations_ExactCoordinateMatch() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        List<Station> allStations = manager.getStationsByLatitudeRange(-90, 90);
+        if (!allStations.isEmpty()) {
+            Station firstStation = allStations.get(0);
+            List<KDTree2.StationDistance> results = manager.kNearestStations(
+                    firstStation.getLatitude(), firstStation.getLongitude(), 1);
+
+            assertFalse(results.isEmpty(), "Should find at least one station");
+            assertTrue(results.get(0).distanceKm < 1.0,
+                    "Distance to exact coordinate should be very small");
+        }
+    }
+
+    @Test
+    void testKNearestStations_RemoteLocation() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        double lat = 0.0;
+        double lon = 180.0;
+        int k = 3;
+
+        List<KDTree2.StationDistance> results = manager.kNearestStations(lat, lon, k);
+
+        assertNotNull(results, "Results should not be null");
+        assertFalse(results.isEmpty(), "Should find stations even from remote location");
+        for (KDTree2.StationDistance sd : results) {
+            assertTrue(sd.distanceKm > 1000.0,
+                    "Distance from Pacific to Europe should be > 1000 km");
+        }
+    }
+
+    @Test
+    void testComplexityAnalysis_IncludesNewMethods() {
+        String analysis = manager.getComplexityAnalysis();
+
+        assertTrue(analysis.contains("US07"), "Should mention US07");
+        assertTrue(analysis.contains("US08"), "Should mention US08");
+        assertTrue(analysis.contains("US09"), "Should mention US09");
+        assertTrue(analysis.contains("2D-Tree"), "Should mention 2D-Tree");
+        assertTrue(analysis.contains("K-nearest"), "Should mention K-nearest");
+        assertTrue(analysis.contains("filter"), "Should mention filtering");
     }
 }

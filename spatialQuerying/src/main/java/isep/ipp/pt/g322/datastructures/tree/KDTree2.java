@@ -270,20 +270,20 @@ public class KDTree2 {
 
         double distanceToPlane;
         if (node.axis == 0) {  // latitude split aka axis 0
-            // Approximate distance (1 degree lat ≈ 111 km)
+            // approximate distance (1 degree lat ≈ 111 km)
             distanceToPlane = Math.abs(node.lat - centerLat) * 111.0;
-        } else {  // Longitude split
-            // Approximate distance (varies with latitude)
+        } else {  // longitude split
+            // approximate distance )
             double latRadians = Math.toRadians(centerLat);
             distanceToPlane = Math.abs(node.lon - centerLon) * 111.0 * Math.cos(latRadians);
         }
 
-        // Search both sides if splitting plane intersects circle
+        // search both sides if splitting plane intersects circle
         if (distanceToPlane <= radiusKm) {
             circularRangeQueryRecursive(node.left, centerLat, centerLon, radiusKm, result);
             circularRangeQueryRecursive(node.right, centerLat, centerLon, radiusKm, result);
         } else {
-            // Only search the side containing the center
+            // only searches the side containing the center of the circle.
             if (node.axis == 0) {
                 if (centerLat < node.lat) {
                     circularRangeQueryRecursive(node.left, centerLat, centerLon, radiusKm, result);
@@ -302,7 +302,6 @@ public class KDTree2 {
 
     /**
      * Nearest neighbor query: Find the closest station to a given point.
-     *
      *
      * Time Complexity: O(log n) average case, O(n) worst case
      *
@@ -326,7 +325,6 @@ public class KDTree2 {
         // calc distance to cur point
         double distance = haversineDistance(queryLat, queryLon, node.lat, node.lon);
 
-        // Update best if this point is closer
         if (result.best == null || distance < result.best.distanceKm) {
             // pick first station at this coordinate as they are sorted by name according to previous US req
             result.best = new StationDistance(node.stationsAtPoint.get(0), distance);
@@ -346,13 +344,11 @@ public class KDTree2 {
             distanceToPlane = Math.abs(node.lon - queryLon) * 111.0 * Math.cos(latRadians);
         }
 
-        // Search the side containing the query point first
         KdNode firstSide = goLeft ? node.left : node.right;
         KdNode secondSide = goLeft ? node.right : node.left;
 
         nearestNeighborRecursive(firstSide, queryLat, queryLon, result);
 
-        // Search the other side only if it could contain a closer point
         if (result.best == null || distanceToPlane < result.bestDistanceKm) {
             nearestNeighborRecursive(secondSide, queryLat, queryLon, result);
         }
@@ -371,7 +367,6 @@ public class KDTree2 {
     public List<StationDistance> kNearestNeighbors(double lat, double lon, int k) {
         if (root == null || k <= 0) return new ArrayList<>();
 
-        // Use a max-heap to maintain the k closest points
         PriorityQueue<StationDistance> maxHeap = new PriorityQueue<>(
                 k,
                 Comparator.comparingDouble((StationDistance sd) -> sd.distanceKm).reversed()
@@ -379,7 +374,6 @@ public class KDTree2 {
 
         kNearestRecursive(root, lat, lon, k, maxHeap);
 
-        // Convert to list and sort by distance (ascending)
         List<StationDistance> result = new ArrayList<>(maxHeap);
         result.sort(Comparator.comparingDouble(sd -> sd.distanceKm));
 
@@ -390,10 +384,8 @@ public class KDTree2 {
                                    int k, PriorityQueue<StationDistance> maxHeap) {
         if (node == null) return;
 
-        // Calculate distance to current point
         double distance = haversineDistance(queryLat, queryLon, node.lat, node.lon);
 
-        // Add all stations at this coordinate
         for (Station station : node.stationsAtPoint) {
             StationDistance sd = new StationDistance(station, distance);
 
@@ -405,7 +397,6 @@ public class KDTree2 {
             }
         }
 
-        // Determine search order
         boolean goLeft;
         double distanceToPlane;
 
@@ -423,7 +414,6 @@ public class KDTree2 {
 
         kNearestRecursive(firstSide, queryLat, queryLon, k, maxHeap);
 
-        // Search other side if it could contain closer points
         if (maxHeap.size() < k || distanceToPlane < maxHeap.peek().distanceKm) {
             kNearestRecursive(secondSide, queryLat, queryLon, k, maxHeap);
         }
@@ -435,7 +425,7 @@ public class KDTree2 {
      * @return Distance in kilometers
      */
     private double haversineDistance(double lat1, double lon1, double lat2, double lon2) {
-        final double R = 6371.0; // Earth's radius in kilometers
+        final double R = 6371.0; // earth's radius in kilometers
 
         double dLat = Math.toRadians(lat2 - lat1);
         double dLon = Math.toRadians(lon2 - lon1);
@@ -527,8 +517,6 @@ public class KDTree2 {
 
         return sb.toString();
     }
-
-    // ==================== HELPER CLASSES ====================
 
     private static class PointBucket {
         double lat;

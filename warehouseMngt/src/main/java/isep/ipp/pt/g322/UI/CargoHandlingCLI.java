@@ -63,6 +63,7 @@ public class CargoHandlingCLI {
                     }
                     case "9" -> runSpatialStationQuery();
                     case "10" -> showComplexityAnalysis();
+                    case "11" -> runUS07Menu();
                     default -> System.out.println("Invalid choice. Please try again.");
                 }
             } catch (ValidationException ve) {
@@ -108,6 +109,7 @@ public class CargoHandlingCLI {
         System.out.println("8) Exit");
         System.out.println("9) Search stations by geographical area (US08)");
         System.out.println("10) Show complexity analysis");
+        System.out.println("11) US07 – Spatial Index (KD-Tree) Statistics");
         System.out.print("Your choice: ");
     }
 
@@ -180,6 +182,63 @@ public class CargoHandlingCLI {
         } catch (Exception e) {
             System.out.println("[ERROR] Could not load stations: " + e.getMessage());
         }
+    }
+
+    private void runUS07Menu() {
+        if (stationManager == null || kdTree == null) {
+            System.out.println("[INFO] Loading stations and building KD-Tree...");
+            try {
+                stationManager = new StationManager();
+                kdTree = stationManager.loadStationsDirectlyToKdTree("/train_stations_europe.csv");
+                System.out.println("[OK] KD-Tree built successfully.");
+            } catch (Exception e) {
+                System.out.println("[ERROR] Failed to build KD-Tree: " + e.getMessage());
+                return;
+            }
+        }
+
+        boolean running = true;
+        Scanner sc = new Scanner(System.in);
+
+        while (running) {
+            System.out.println("\n=== US07 – Balanced 2D KD-Tree ===");
+            System.out.println("1) Show KD-Tree basic statistics");
+            System.out.println("2) Show bucket histogram");
+            System.out.println("0) Return to main menu");
+            System.out.print("Choice: ");
+
+            String op = sc.nextLine().trim();
+
+            switch (op) {
+                case "1" -> showKDTreeStats();
+                case "2" -> showBucketHistogram();
+                case "0" -> running = false;
+                default -> System.out.println("Invalid option.");
+            }
+        }
+    }
+    private void showKDTreeStats() {
+        if (kdTree == null) {
+            System.out.println("[ERROR] KD-Tree not built.");
+            return;
+        }
+
+        KdTree.Stats stats = kdTree.computeStats();
+
+        System.out.println("\n=== KD-Tree Statistics ===");
+        System.out.println("Node count : " + stats.nodeCount);
+        System.out.println("Tree height: " + stats.height);
+        System.out.println("Distinct bucket sizes: " + stats.bucketHistogram.keySet());
+    }
+    private void showBucketHistogram() {
+        if (kdTree == null) return;
+
+        Map<Integer, Integer> hist = kdTree.getBucketSizeDistribution();
+
+        System.out.println("\n=== Bucket Size Histogram ===");
+        hist.forEach((bucketSize, countNodes) ->
+                System.out.printf("Bucket size %d → %d nodes%n", bucketSize, countNodes)
+        );
     }
 
     // Distribute loaded boxes across bays in round-robin fashion (like colleagues)

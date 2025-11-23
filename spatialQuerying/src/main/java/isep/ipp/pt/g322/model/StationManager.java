@@ -452,6 +452,19 @@ public class StationManager {
         return new KdTree(allStations);
     }
 
+    public KdTree loadStationsDirectlyToKdTree2(String csvPath) {
+        List<Station> allStations = new ArrayList<>();
+
+        loadStationsFromCSV(csvPath);
+
+        for (LatitudeKey key : latitudeIndex.inOrder()) {
+            allStations.addAll(key.getStations());
+        }
+
+
+        return new KdTree(allStations);
+    }
+
     /**
      * US10
      */

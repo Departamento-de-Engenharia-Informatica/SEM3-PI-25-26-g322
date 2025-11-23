@@ -582,6 +582,8 @@ public class KDTree2 {
 
     /**
      * K-Nearest neighbors query with timezone filter (US09 - 1 filter at most)
+     * more efficient to handle 0-1 filters or 2-(...) this way and more easily testable, as parameter type changes, so less conditionals mean
+     * more straightforward code for review/debug. adjust if needed
      *
      * @param lat Query latitude
      * @param lon Query longitude

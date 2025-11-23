@@ -1,0 +1,3 @@
+cd USAC01/Utils
+make run    # Compilar e executar
+make clean  # limpar

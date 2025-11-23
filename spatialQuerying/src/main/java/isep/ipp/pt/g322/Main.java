@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 public class Main {
-    static void main() {
+    public static void main(String[] args) {
         StationManager indexManager = new StationManager();
 
         String csvPath = "/train_stations_europe.csv";

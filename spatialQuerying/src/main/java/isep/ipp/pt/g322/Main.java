@@ -1,12 +1,11 @@
 package isep.ipp.pt.g322;
 
 
-import isep.ipp.pt.g322.model.Station;
-import isep.ipp.pt.g322.model.StationManager;
-import isep.ipp.pt.g322.model.KDTree2Stats;
+import isep.ipp.pt.g322.model.*;
 import isep.ipp.pt.g322.datastructures.tree.KDTree2;
 
 import java.util.List;
+import java.util.Map;
 
 public class Main {
     static void main() {
@@ -35,6 +34,10 @@ public class Main {
 
         // US09
         runUS09ProximitySearch(indexManager);
+        System.out.println("\n" + "=".repeat(60) + "\n");
+
+        // US10
+        runUS10RadiusSearchWithSummary(indexManager);
 
         System.out.println("\n" + "=".repeat(60) + "\n");
         System.out.println(indexManager.getComplexityAnalysis());
@@ -274,6 +277,97 @@ public class Main {
 
         if (results.size() > maxDisplay) {
             System.out.println("... and " + (results.size() - maxDisplay) + " more results");
+        }
+    }
+
+    // US10
+    private static void runUS10RadiusSearchWithSummary(StationManager indexManager) {
+        System.out.println("=== US10 - RADIUS SEARCH WITH DENSITY SUMMARY ===\n");
+
+        // Query 1: 100km radius around Lisbon
+        System.out.println("Query 1: All stations within 100km of Lisbon");
+        System.out.println("-".repeat(60));
+        RadiusSearchResult result1 = indexManager.radiusSearchWithSummary(38.7223, -9.1393, 100.0);
+
+        System.out.println(result1);
+        System.out.println(result1.getStationDensitySummary());
+
+        System.out.println("First 10 stations (sorted by distance ASC, name DESC):");
+        printRadiusSearchResults(result1, 10);
+
+        // Query 2: 50km radius around Porto
+        System.out.println("\nQuery 2: All stations within 50km of Porto");
+        System.out.println("-".repeat(60));
+        RadiusSearchResult result2 = indexManager.radiusSearchWithSummary(41.1579, -8.6291, 50.0);
+
+        System.out.println(result2);
+        System.out.println(result2.getStationDensitySummary());
+
+        System.out.println("First 10 stations:");
+        printRadiusSearchResults(result2, 10);
+
+        // Query 3: 200km radius around Paris
+        System.out.println("\nQuery 3: All stations within 200km of Paris");
+        System.out.println("-".repeat(60));
+        RadiusSearchResult result3 = indexManager.radiusSearchWithSummary(48.8566, 2.3522, 200.0);
+
+        System.out.println(result3);
+        System.out.println(result3.getStationDensitySummary().toCompactString());
+
+        System.out.println("\nTop 5 countries by station count:");
+        List<Map.Entry<String, Integer>> topCountries = result3.getStationDensitySummary().getTopCountries(5);
+        for (int i = 0; i < topCountries.size(); i++) {
+            Map.Entry<String, Integer> entry = topCountries.get(i);
+            System.out.printf("%d. %s: %d stations (%.1f%%)%n",
+                    i + 1, entry.getKey(), entry.getValue(),
+                    100.0 * entry.getValue() / result3.getTotalStations());
+        }
+
+        System.out.println("\nQuery 4: City stations only within 150km of Madrid");
+        System.out.println("-".repeat(60));
+        KDTree2.StationFilterCriteria cityCriteria = new KDTree2.StationFilterCriteria()
+                .cityOnly(true);
+        RadiusSearchResult result4 = indexManager.radiusSearchWithSummaryFiltered(
+                40.4168, -3.7038, 150.0, cityCriteria);
+
+        System.out.println(result4);
+        System.out.println(result4.getStationDensitySummary().toCompactString());
+
+        long start = System.nanoTime();
+        RadiusSearchResult result5 = indexManager.radiusSearchWithSummary(52.5200, 13.4050, 300.0);
+        long elapsed = System.nanoTime() - start;
+
+        System.out.printf("Search completed in %.3f ms%n", elapsed / 1_000_000.0);
+        System.out.printf("Stations found: %d%n", result5.getTotalStations());
+        System.out.printf("Distance groups in AVL: %d%n", result5.getSortedByDistance().size());
+        System.out.printf("AVL tree height: %d%n", result5.getSortedByDistance().height());
+        System.out.println("\n" + result5.getStationDensitySummary().toCompactString());
+    }
+
+    private static void printRadiusSearchResults(RadiusSearchResult result, int maxDisplay) {
+        List<DistanceKey> distanceKeys = (List<DistanceKey>) result.getSortedByDistance().inOrder();
+
+        System.out.println();
+        int count = 0;
+
+        for (DistanceKey key : distanceKeys) {
+            if (count >= maxDisplay) break;
+
+            for (Station station : key.getStations()) {
+                if (count >= maxDisplay) break;
+
+                System.out.printf("%3d. %-45s | %-3s | %.2f km | City: %-5s%n",
+                        (count + 1),
+                        truncate(station.getStation(), 45),
+                        station.getCountry(),
+                        key.getDistanceKm(),
+                        station.isCity());
+                count++;
+            }
+        }
+
+        if (result.getTotalStations() > maxDisplay) {
+            System.out.println("... and " + (result.getTotalStations() - maxDisplay) + " more stations");
         }
     }
 }

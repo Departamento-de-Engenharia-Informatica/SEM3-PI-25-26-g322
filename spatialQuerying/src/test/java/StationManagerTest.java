@@ -1,11 +1,11 @@
-import isep.ipp.pt.g322.model.Station;
-import isep.ipp.pt.g322.model.StationManager;
+import isep.ipp.pt.g322.model.*;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.*;
 import java.util.List;
+import java.util.Map;
+
 import isep.ipp.pt.g322.datastructures.tree.KDTree2;
-import isep.ipp.pt.g322.model.KDTree2Stats;
 
 
 class StationManagerTest {
@@ -892,5 +892,402 @@ class StationManagerTest {
         assertTrue(analysis.contains("2D-Tree"), "Should mention 2D-Tree");
         assertTrue(analysis.contains("K-nearest"), "Should mention K-nearest");
         assertTrue(analysis.contains("filter"), "Should mention filtering");
+    }
+
+    @Test
+    void testRadiusSearchWithSummary_FindsStationsWithinRadius() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        double centerLat = 41.1579;
+        double centerLon = -8.6291;
+        double radiusKm = 100.0;
+
+        RadiusSearchResult result = manager.radiusSearchWithSummary(centerLat, centerLon, radiusKm);
+
+        assertNotNull(result, "Result should not be null");
+        assertTrue(result.getTotalStations() > 0, "Should find stations within radius");
+        assertEquals(radiusKm, result.getRadiusKm(), 0.001);
+        assertEquals(centerLat, result.getCenterLat(), 0.001);
+        assertEquals(centerLon, result.getCenterLon(), 0.001);
+    }
+
+    @Test
+    void testRadiusSearchWithSummary_AllStationsWithinRadius() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        double centerLat = 48.8566;
+        double centerLon = 2.3522;
+        double radiusKm = 50.0;
+
+        RadiusSearchResult result = manager.radiusSearchWithSummary(centerLat, centerLon, radiusKm);
+
+        List<Station> allStations = result.getAllStationsSorted();
+        for (Station station : allStations) {
+            double distance = calculateDistance(centerLat, centerLon,
+                    station.getLatitude(), station.getLongitude());
+            assertTrue(distance <= radiusKm + 1.0,
+                    "Station " + station.getStation() + " should be within radius");
+        }
+    }
+
+    @Test
+    void testRadiusSearchWithSummary_SmallRadiusFindsFewerStations() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        double centerLat = 41.0;
+        double centerLon = -8.0;
+
+        RadiusSearchResult smallRadius = manager.radiusSearchWithSummary(centerLat, centerLon, 50.0);
+        RadiusSearchResult largeRadius = manager.radiusSearchWithSummary(centerLat, centerLon, 500.0);
+
+        assertTrue(smallRadius.getTotalStations() <= largeRadius.getTotalStations(),
+                "Smaller radius should find same or fewer stations");
+    }
+
+    @Test
+    void testRadiusSearchWithSummary_ZeroRadiusFindsNearestOrNone() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        RadiusSearchResult result = manager.radiusSearchWithSummary(41.0, -8.0, 0.0);
+
+        assertNotNull(result, "Result should not be null");
+        assertTrue(result.getTotalStations() >= 0, "Should handle zero radius");
+    }
+
+    @Test
+    void testRadiusSearchWithSummary_VeryLargeRadiusFindsAllStations() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        RadiusSearchResult result = manager.radiusSearchWithSummary(45.0, 5.0, 10000.0);
+
+        assertNotNull(result, "Result should not be null");
+        assertTrue(result.getTotalStations() > 0, "Should find stations with very large radius");
+    }
+
+    @Test
+    void testRadiusSearchWithSummary_ThrowsExceptionWhenNotBuilt() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> manager.radiusSearchWithSummary(41.0, -8.0, 100.0),
+                "Should throw exception when spatial index not built");
+
+        assertTrue(exception.getMessage().contains("not built"),
+                "Exception message should mention index not built");
+    }
+
+    @Test
+    void testRadiusSearchWithSummary_HasValidSummary() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        RadiusSearchResult result = manager.radiusSearchWithSummary(41.0, -8.0, 200.0);
+
+        assertNotNull(result.getStationDensitySummary(), "Summary should not be null");
+        assertEquals(result.getTotalStations(),
+                result.getStationDensitySummary().getTotalStations(),
+                "Summary should have same total as result");
+    }
+
+    @Test
+    void testRadiusSearchWithSummary_HasValidAVLTree() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        RadiusSearchResult result = manager.radiusSearchWithSummary(48.8566, 2.3522, 700.0);
+
+        assertNotNull(result.getSortedByDistance(), "AVL tree should not be null");
+        assertTrue(result.getSortedByDistance().size() > 0, "AVL tree should have entries");
+    }
+
+    @Test
+    void testRadiusSearchWithSummaryFiltered_FiltersByTimezone() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        KDTree2.StationFilterCriteria criteria = new KDTree2.StationFilterCriteria()
+                .timezoneGroup("CET");
+
+        RadiusSearchResult result = manager.radiusSearchWithSummaryFiltered(
+                48.8566, 2.3522, 200.0, criteria);
+
+        assertNotNull(result, "Result should not be null");
+        for (Station station : result.getAllStationsSorted()) {
+            assertEquals("CET", station.getTimeZoneGroup(),
+                    "All stations should match timezone filter");
+        }
+    }
+
+    @Test
+    void testRadiusSearchWithSummaryFiltered_FiltersByCountry() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        KDTree2.StationFilterCriteria criteria = new KDTree2.StationFilterCriteria()
+                .country("PT");
+
+        RadiusSearchResult result = manager.radiusSearchWithSummaryFiltered(
+                41.0, -8.0, 300.0, criteria);
+
+        assertNotNull(result, "Result should not be null");
+        for (Station station : result.getAllStationsSorted()) {
+            assertEquals("PT", station.getCountry(),
+                    "All stations should be from Portugal");
+        }
+    }
+
+    @Test
+    void testRadiusSearchWithSummaryFiltered_FiltersByCityOnly() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        KDTree2.StationFilterCriteria criteria = new KDTree2.StationFilterCriteria()
+                .cityOnly(true);
+
+        RadiusSearchResult result = manager.radiusSearchWithSummaryFiltered(
+                41.0, -8.0, 200.0, criteria);
+
+        assertNotNull(result, "Result should not be null");
+        for (Station station : result.getAllStationsSorted()) {
+            assertTrue(station.isCity(), "All stations should be cities");
+        }
+    }
+
+    @Test
+    void testRadiusSearchWithSummaryFiltered_FiltersByMainStationOnly() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        KDTree2.StationFilterCriteria criteria = new KDTree2.StationFilterCriteria()
+                .mainStationOnly(true);
+
+        RadiusSearchResult result = manager.radiusSearchWithSummaryFiltered(
+                48.8566, 2.3522, 150.0, criteria);
+
+        assertNotNull(result, "Result should not be null");
+        for (Station station : result.getAllStationsSorted()) {
+            assertTrue(station.isMainStation(), "All stations should be main stations");
+        }
+    }
+
+    @Test
+    void testRadiusSearchWithSummaryFiltered_FiltersByAirportOnly() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        KDTree2.StationFilterCriteria criteria = new KDTree2.StationFilterCriteria()
+                .airportOnly(true);
+
+        RadiusSearchResult result = manager.radiusSearchWithSummaryFiltered(
+                41.0, -8.0, 300.0, criteria);
+
+        assertNotNull(result, "Result should not be null");
+        for (Station station : result.getAllStationsSorted()) {
+            assertTrue(station.isAirport(), "All stations should be airports");
+        }
+    }
+
+    @Test
+    void testRadiusSearchWithSummaryFiltered_MultipleCriteria() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        KDTree2.StationFilterCriteria criteria = new KDTree2.StationFilterCriteria()
+                .timezoneGroup("CET")
+                .cityOnly(true)
+                .mainStationOnly(true);
+
+        RadiusSearchResult result = manager.radiusSearchWithSummaryFiltered(
+                48.8566, 2.3522, 200.0, criteria);
+
+        assertNotNull(result, "Result should not be null");
+        for (Station station : result.getAllStationsSorted()) {
+            assertEquals("CET", station.getTimeZoneGroup());
+            assertTrue(station.isCity());
+            assertTrue(station.isMainStation());
+        }
+    }
+
+    @Test
+    void testRadiusSearchWithSummaryFiltered_NullCriteriaReturnsAll() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        double centerLat = 41.0;
+        double centerLon = -8.0;
+        double radiusKm = 200.0;
+
+        RadiusSearchResult withoutFilter = manager.radiusSearchWithSummary(
+                centerLat, centerLon, radiusKm);
+        RadiusSearchResult withNullFilter = manager.radiusSearchWithSummaryFiltered(
+                centerLat, centerLon, radiusKm, null);
+
+        assertEquals(withoutFilter.getTotalStations(), withNullFilter.getTotalStations(),
+                "Null criteria should return same as no filter");
+    }
+
+    @Test
+    void testRadiusSearchWithSummaryFiltered_EmptyCriteriaReturnsAll() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        double centerLat = 41.0;
+        double centerLon = -8.0;
+        double radiusKm = 200.0;
+
+        KDTree2.StationFilterCriteria emptyCriteria = new KDTree2.StationFilterCriteria();
+
+        RadiusSearchResult withoutFilter = manager.radiusSearchWithSummary(
+                centerLat, centerLon, radiusKm);
+        RadiusSearchResult withEmptyFilter = manager.radiusSearchWithSummaryFiltered(
+                centerLat, centerLon, radiusKm, emptyCriteria);
+
+        assertEquals(withoutFilter.getTotalStations(), withEmptyFilter.getTotalStations(),
+                "Empty criteria should return same as no filter");
+    }
+
+    @Test
+    void testRadiusSearchWithSummaryFiltered_RestrictiveCriteriaFindsFewerStations() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        double centerLat = 48.8566;
+        double centerLon = 2.3522;
+        double radiusKm = 200.0;
+
+        RadiusSearchResult unfiltered = manager.radiusSearchWithSummary(
+                centerLat, centerLon, radiusKm);
+
+        KDTree2.StationFilterCriteria criteria = new KDTree2.StationFilterCriteria()
+                .timezoneGroup("CET")
+                .mainStationOnly(true);
+
+        RadiusSearchResult filtered = manager.radiusSearchWithSummaryFiltered(
+                centerLat, centerLon, radiusKm, criteria);
+
+        assertTrue(filtered.getTotalStations() <= unfiltered.getTotalStations(),
+                "Filtered search should find same or fewer stations");
+    }
+
+    @Test
+    void testRadiusSearchWithSummaryFiltered_ThrowsExceptionWhenNotBuilt() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+
+        KDTree2.StationFilterCriteria criteria = new KDTree2.StationFilterCriteria()
+                .timezoneGroup("CET");
+
+        IllegalStateException exception = assertThrows(IllegalStateException.class,
+                () -> manager.radiusSearchWithSummaryFiltered(41.0, -8.0, 100.0, criteria),
+                "Should throw exception when spatial index not built");
+
+        assertTrue(exception.getMessage().contains("not built"),
+                "Exception message should mention index not built");
+    }
+
+    @Test
+    void testRadiusSearchWithSummaryFiltered_NoMatchingStations() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        KDTree2.StationFilterCriteria criteria = new KDTree2.StationFilterCriteria()
+                .timezoneGroup("NONEXISTENT")
+                .country("XX");
+
+        RadiusSearchResult result = manager.radiusSearchWithSummaryFiltered(
+                41.0, -8.0, 200.0, criteria);
+
+        assertNotNull(result, "Result should not be null");
+        assertEquals(0, result.getTotalStations(),
+                "Should find no stations matching impossible criteria");
+    }
+
+    @Test
+    void testRadiusSearchWithSummaryFiltered_ResultsWithinRadius() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        double centerLat = 41.0;
+        double centerLon = -8.0;
+        double radiusKm = 150.0;
+
+        KDTree2.StationFilterCriteria criteria = new KDTree2.StationFilterCriteria()
+                .cityOnly(true);
+
+        RadiusSearchResult result = manager.radiusSearchWithSummaryFiltered(
+                centerLat, centerLon, radiusKm, criteria);
+
+        for (Station station : result.getAllStationsSorted()) {
+            double distance = calculateDistance(centerLat, centerLon,
+                    station.getLatitude(), station.getLongitude());
+            assertTrue(distance <= radiusKm + 1.0,
+                    "Filtered station should still be within radius");
+        }
+    }
+
+    @Test
+    void testRadiusSearchWithSummaryFiltered_PreservesDistanceOrdering() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        KDTree2.StationFilterCriteria criteria = new KDTree2.StationFilterCriteria()
+                .timezoneGroup("CET");
+
+        RadiusSearchResult result = manager.radiusSearchWithSummaryFiltered(
+                48.8566, 2.3522, 200.0, criteria);
+
+        List<Station> stations = result.getAllStationsSorted();
+        if (stations.size() > 1) {
+            double centerLat = result.getCenterLat();
+            double centerLon = result.getCenterLon();
+
+            for (int i = 0; i < stations.size() - 1; i++) {
+                double dist1 = calculateDistance(centerLat, centerLon,
+                        stations.get(i).getLatitude(), stations.get(i).getLongitude());
+                double dist2 = calculateDistance(centerLat, centerLon,
+                        stations.get(i + 1).getLatitude(), stations.get(i + 1).getLongitude());
+
+                assertTrue(dist1 <= dist2 + 1.0,
+                        "Stations should be sorted by distance (with tolerance for rounding)");
+            }
+        }
+    }
+
+    @Test
+    void testRadiusSearchWithSummaryFiltered_SummaryReflectsFilteredResults() {
+        manager.loadStationsFromCSV("/test_stations.csv");
+        manager.buildSpatialIndex();
+
+        KDTree2.StationFilterCriteria criteria = new KDTree2.StationFilterCriteria()
+                .country("PT");
+
+        RadiusSearchResult result = manager.radiusSearchWithSummaryFiltered(
+                41.0, -8.0, 300.0, criteria);
+
+        StationDensitySummary summary = result.getStationDensitySummary();
+        assertEquals(result.getTotalStations(), summary.getTotalStations(),
+                "Summary should reflect filtered results");
+
+        for (Map.Entry<String, Integer> entry : summary.getCountByCountry().entrySet()) {
+            if (entry.getValue() > 0) {
+                assertEquals("PT", entry.getKey(),
+                        "Summary should only contain filtered country");
+            }
+        }
+    }
+
+    private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+        final double EARTH_RADIUS_KM = 6371.0;
+        double dLat = Math.toRadians(lat2 - lat1);
+        double dLon = Math.toRadians(lon2 - lon1);
+        double a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+                Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2)) *
+                        Math.sin(dLon / 2) * Math.sin(dLon / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return EARTH_RADIUS_KM * c;
     }
 }

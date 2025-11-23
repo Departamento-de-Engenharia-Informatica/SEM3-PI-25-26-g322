@@ -57,7 +57,6 @@ public class StationManager {
 
                     if (station.isValid()) {
                         addStationToIndices(station);
-                        System.out.println(totalStations);
                         validStations++;
                     } else {
                         invalidStations++;
@@ -285,11 +284,11 @@ public class StationManager {
             throw new IllegalStateException("AVL indices must be populated before building KD-Tree");
         }
 
-        System.out.println("Building 2D-Tree from AVL indices...");
+        System.out.println("Building 2D-Tree from AVL indices..."); // just for console feedback
         long startTime = System.nanoTime(); // just for console feedback purposes
 
         this.spatialIndex2 = new KDTree2(latitudeIndex, longitudeIndex);
-
+        // to delete later
         long endTime = System.nanoTime();
         double elapsedMs = (endTime - startTime) / 1_000_000.0;
 
@@ -396,6 +395,24 @@ public class StationManager {
         sb.append("      - Multiple criteria: Still O(1) per station\n");
         sb.append("      - Trade-off: More nodes visited vs. filtered results\n");
 
+        sb.append("\n8. US10 - Radius Search with Density Summary:\n");
+        sb.append("   a) Circular range query (2D-tree):\n");
+        sb.append("      - Average: O(√n + k) where k is results found\n");
+        sb.append("      - Uses Haversine distance for accurate km\n");
+        sb.append("   \n");
+        sb.append("   b) Building AVL tree from results:\n");
+        sb.append("      - Insert k results into AVL: O(k log k)\n");
+        sb.append("      - Grouped by rounded distance (2 decimal places)\n");
+        sb.append("      - Stations at same distance sorted by name DESC\n");
+        sb.append("   \n");
+        sb.append("   c) Density summary computation:\n");
+        sb.append("      - Count by country: O(k) with TreeMap\n");
+        sb.append("      - Count city vs non-city: O(k) single pass\n");
+        sb.append("   \n");
+        sb.append("   d) TOTAL complexity:\n");
+        sb.append("      - O(√n + k log k) where n=total stations, k=matches\n");
+        sb.append("      - Dominated by AVL construction when k is large\n");
+        sb.append("      - Space: O(k) for AVL tree + summary\n");
 
         return sb.toString();
     }
@@ -439,6 +456,51 @@ public class StationManager {
         List<Station> allStations = getStationsByLatitudeRange(-90.0, 90.0);
 
         return new KdTree(allStations);
+    }
+
+    /**
+     * US10
+     */
+    public RadiusSearchResult radiusSearchWithSummary(double centerLat, double centerLon, double radiusKm) {
+        if (spatialIndex2 == null) {
+            throw new IllegalStateException("Spatial index not built. Call buildSpatialIndex() first.");
+        }
+
+        // to get all stations within radius using KD-tree circular range query - coming from KDTree2 class
+        List<KDTree2.StationDistance> results = spatialIndex2.circularRangeQuery(centerLat, centerLon, radiusKm);
+
+        List<Station> stations = new ArrayList<>();
+        List<Double> distances = new ArrayList<>();
+
+        for (KDTree2.StationDistance sd : results) {
+            stations.add(sd.station);
+            distances.add(sd.distanceKm);
+        }
+
+        return new RadiusSearchResult(stations, distances, radiusKm, centerLat, centerLon);
+    }
+
+    public RadiusSearchResult radiusSearchWithSummaryFiltered(double centerLat, double centerLon,
+                                                              double radiusKm,
+                                                              KDTree2.StationFilterCriteria criteria) {
+        if (spatialIndex2 == null) {
+            throw new IllegalStateException("Spatial index not built. Call buildSpatialIndex() first.");
+        }
+
+        // to get all stations within radius using KDTree2 class
+        List<KDTree2.StationDistance> results = spatialIndex2.circularRangeQuery(centerLat, centerLon, radiusKm);
+
+        List<Station> stations = new ArrayList<>();
+        List<Double> distances = new ArrayList<>();
+
+        for (KDTree2.StationDistance sd : results) {
+            if (criteria == null || criteria.matches(sd.station)) {
+                stations.add(sd.station);
+                distances.add(sd.distanceKm);
+            }
+        }
+
+        return new RadiusSearchResult(stations, distances, radiusKm, centerLat, centerLon);
     }
 
     /**

@@ -53,11 +53,6 @@ public class Main {
         List<Station> cetStations = indexManager.getStationsByTimeZoneGroup("CET");
         printQueryResults(cetStations, 10);
 
-        System.out.println("Query 1: All stations in CET time zone (ordered by country)");
-        System.out.println("-".repeat(60));
-        List<Station> wetStations = indexManager.getStationsByTimeZoneGroup("WET/GMT");
-        printQueryResults(wetStations, 10);
-
         //  All stations in a window of time zones [CET, WET/GMT]
         System.out.println("\nQuery 2: Stations in time zone window [CET, WET/GMT]");
         System.out.println("-".repeat(60));
@@ -135,11 +130,9 @@ public class Main {
         KDTree2Stats stats = indexManager.getSpatialIndexStatistics();
 
         System.out.println("\n" + "-".repeat(60));
-        System.out.println("ACCEPTANCE CRITERIA VALIDATION:");
         System.out.println("-".repeat(60));
         System.out.println("✓ Tree size (unique coordinate points): " + stats.size);
         System.out.println("✓ Tree height: " + stats.height);
-        System.out.println("✓ Optimal height (log₂n): " + String.format("%.2f", Math.log(stats.size) / Math.log(2)));
 
         System.out.println("\n✓ Distinct bucket sizes (stations per coordinate):");
         int totalPoints = 0;

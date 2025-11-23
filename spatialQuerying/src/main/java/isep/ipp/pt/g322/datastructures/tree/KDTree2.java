@@ -356,7 +356,6 @@ public class KDTree2 {
 
     /**
      * K-Nearest neighbors query: Find the k closest stations to a given point.
-     *
      * Time Complexity: O(log n + k) average case
      *
      * @param lat Query latitude
@@ -380,6 +379,8 @@ public class KDTree2 {
         return result;
     }
 
+    // goal of using priorityQueue here is to maintain the k closest stations found at the moment of the method recursive stack call
+    // also it's more efficient to add. the root contains the farthest element, which is the max distance. to get it use peek()
     private void kNearestRecursive(KdNode node, double queryLat, double queryLon,
                                    int k, PriorityQueue<StationDistance> maxHeap) {
         if (node == null) return;

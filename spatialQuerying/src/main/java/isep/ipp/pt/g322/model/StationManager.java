@@ -288,7 +288,7 @@ public class StationManager {
         long startTime = System.nanoTime(); // just for console feedback purposes
 
         this.spatialIndex2 = new KDTree2(latitudeIndex, longitudeIndex);
-        // to delete later
+        // to delete later, it is just for console feedback purposes
         long endTime = System.nanoTime();
         double elapsedMs = (endTime - startTime) / 1_000_000.0;
 
@@ -353,11 +353,9 @@ public class StationManager {
 
         sb.append("\n3. Query by Time Zone Window:\n");
         sb.append("   - Time: O(m * log k) similar to single timezone query\n");
-        sb.append("   - Additional overhead for set lookup: O(1) per comparison\n");
 
         sb.append("\n4. Range queries (latitude/longitude):\n");
         sb.append("   - Time: O(k) for in-order traversal\n");
-        sb.append("   - Could be optimized with range search to O(log k + m)\n");
 
         sb.append("\n5. US07 - 2D-Tree Construction (Bulk Build):\n");
         sb.append("   - Extraction from AVL trees: O(n) in-order traversal\n");
@@ -366,7 +364,6 @@ public class StationManager {
         sb.append("   - Recursive build: O(n) with pre-sorted lists\n");
         sb.append("   - TOTAL: O(n log n) where n is unique coordinate points\n");
         sb.append("   - Space: O(n) for two sorted lists + coordinate map\n");
-        sb.append("   - Result: Balanced tree with height ≈ log₂(n)\n");
 
         sb.append("\n6. US08 - Geographical Rectangle Search (KD-Tree):\n");
         sb.append("   - Construction: O(n log n) where n is the number of stations\n");
@@ -378,13 +375,10 @@ public class StationManager {
         sb.append("\n7. US09 - Proximity Search with Filters:\n");
         sb.append("   a) K-nearest neighbors without filter:\n");
         sb.append("      - Average: O(log n + k) where k is number of neighbors\n");
-        sb.append("      - Worst: O(n) in degenerate cases\n");
         sb.append("   \n");
         sb.append("   b) K-nearest neighbors WITH filter:\n");
         sb.append("      - Average: O(log n + m) where m is nodes visited\n");
         sb.append("      - m ≥ k because some nodes won't match filter\n");
-        sb.append("      - Worst: O(n) if filter is very selective\n");
-        sb.append("      - Pruning: Skip subtrees that can't contain closer matches\n");
         sb.append("   \n");
         sb.append("   c) Haversine distance calculation:\n");
         sb.append("      - O(1) per distance computation\n");
@@ -397,7 +391,7 @@ public class StationManager {
 
         sb.append("\n8. US10 - Radius Search with Density Summary:\n");
         sb.append("   a) Circular range query (2D-tree):\n");
-        sb.append("      - Average: O(√n + k) where k is results found\n");
+        sb.append("      - Average: O(n^0.5 + k) where k is results found\n");
         sb.append("      - Uses Haversine distance for accurate km\n");
         sb.append("   \n");
         sb.append("   b) Building AVL tree from results:\n");
@@ -410,7 +404,7 @@ public class StationManager {
         sb.append("      - Count city vs non-city: O(k) single pass\n");
         sb.append("   \n");
         sb.append("   d) TOTAL complexity:\n");
-        sb.append("      - O(√n + k log k) where n=total stations, k=matches\n");
+        sb.append("      - O(n^0.5 + k log k) where n=total stations, k=matches\n");
         sb.append("      - Dominated by AVL construction when k is large\n");
         sb.append("      - Space: O(k) for AVL tree + summary\n");
 

@@ -387,20 +387,20 @@ public class KDTree2 {
 
         double distance = haversineDistance(queryLat, queryLon, node.lat, node.lon);
 
-        for (Station station : node.stationsAtPoint) {
+        for (Station station : node.stationsAtPoint) { // the farthest always gets removed, only the closest stations remain
             StationDistance sd = new StationDistance(station, distance);
 
             if (maxHeap.size() < k) {
                 maxHeap.offer(sd);
             } else if (distance < maxHeap.peek().distanceKm) {
-                maxHeap.poll();
-                maxHeap.offer(sd);
+                maxHeap.poll();     // remove current farthest
+                maxHeap.offer(sd);  // insert closer point
             }
         }
 
         boolean goLeft;
         double distanceToPlane;
-
+        // this is for pruning aka optimizing.
         if (node.axis == 0) {
             goLeft = queryLat < node.lat;
             distanceToPlane = Math.abs(node.lat - queryLat) * 111.0;
@@ -414,7 +414,7 @@ public class KDTree2 {
         KdNode secondSide = goLeft ? node.right : node.left;
 
         kNearestRecursive(firstSide, queryLat, queryLon, k, maxHeap);
-
+        // only check other side if it could contain closer stations
         if (maxHeap.size() < k || distanceToPlane < maxHeap.peek().distanceKm) {
             kNearestRecursive(secondSide, queryLat, queryLon, k, maxHeap);
         }
@@ -426,7 +426,7 @@ public class KDTree2 {
      * @return Distance in kilometers
      */
     private double haversineDistance(double lat1, double lon1, double lat2, double lon2) {
-        final double R = 6371.0; // earth's radius in kilometers
+        final double R = 6371.0; // earth's radius in kilometers - error -> should be float
 
         double dLat = Math.toRadians(lat2 - lat1);
         double dLon = Math.toRadians(lon2 - lon1);

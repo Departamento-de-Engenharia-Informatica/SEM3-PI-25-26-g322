@@ -89,14 +89,18 @@ public class DirectedUpgradePlan {
         }
 
         // temporal complexity analysis
-        System.out.println("\nTemporal Analysis:");
-        System.out.println("─────────────────────────────────────────────────────────");
-        System.out.printf("Computation time: %.3f ms%n", result.getComputationTimeMillis());
-        System.out.printf("Time complexity: O(V + E) where V=%d, E=%d%n",
+        System.out.println("\nAnalise Temporal:");
+        System.out.println("---------------------------------------------------------");
+        System.out.printf("Tempo de computacao: %.3f ms%n", result.getComputationTimeMillis());
+        System.out.printf("Complexidade temporal: O(V + E) = O(%d + %d) = O(%d)%n",
                 network.getNumStations(),
-                network.getNumConnections()
+                network.getNumConnections(),
+                network.getNumStations() + network.getNumConnections()
         );
-        System.out.println("Space complexity: O(V)");
-        System.out.println("Algorithm: Kahn's algorithm (BFS-based topological sort)");
+        System.out.println("  Explicacao: O algoritmo de Kahn processa cada vertice uma vez (V operacoes)");
+        System.out.println("  e examina cada aresta uma vez (E operacoes), resultando em O(V + E) total.");
+        System.out.printf("Complexidade espacial: O(V) = O(%d)%n", network.getNumStations());
+        System.out.println("  Explicacao: Armazena contagem de grau de entrada e fila para vertices.");
+        System.out.println("Algoritmo: Algoritmo de Kahn (ordenacao topologica baseada em BFS)");
     }
 }

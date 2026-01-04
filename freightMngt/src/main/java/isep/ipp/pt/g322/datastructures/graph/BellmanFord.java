@@ -32,15 +32,15 @@ public class BellmanFord {
             this.predecessors = predecessors != null ? new HashMap<>(predecessors) : new HashMap<>();
             this.source = source;
             this.complexityAnalysis = String.format(
-                "Análise Temporal Bellman-Ford:\n" +
+                "Analise Temporal Bellman-Ford:\n" +
                 "- Complexidade Temporal: O(V * E) = O(%d * %d) = O(%d)\n" +
-                "  Explicação: O algoritmo relaxa todas as arestas V-1 vezes, onde V é o número de vértices\n" +
-                "  e E é o número de arestas. Cada iteração processa todas as E arestas, resultando em\n" +
-                "  V * E operações no pior caso.\n" +
+                "  Explicacao: O algoritmo relaxa todas as arestas V-1 vezes, onde V e o numero de vertices\n" +
+                "  e E e o numero de arestas. Cada iteracao processa todas as E arestas, resultando em\n" +
+                "  V * E operacoes no pior caso.\n" +
                 "- Complexidade Espacial: O(V) = O(%d)\n" +
-                "  Explicação: Armazena distâncias e predecessores para cada vértice.\n" +
-                "- Relaxações: %d iterações × %d arestas = %d operações\n" +
-                "- Deteção de ciclo negativo: %d verificações de arestas",
+                "  Explicacao: Armazena distancias e predecessores para cada vertice.\n" +
+                "- Relaxacoes: %d iteracoes x %d arestas = %d operacoes\n" +
+                "- Detecao de ciclo negativo: %d verificacoes de arestas",
                 numVertices, numEdges, numVertices * numEdges,
                 numVertices,
                 numVertices - 1, numEdges, (numVertices - 1) * numEdges,

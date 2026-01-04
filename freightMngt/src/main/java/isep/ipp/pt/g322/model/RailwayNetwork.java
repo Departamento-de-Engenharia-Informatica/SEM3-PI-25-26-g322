@@ -165,7 +165,7 @@ public class RailwayNetwork {
         double flow = Algorithms.edmondsKarp(this.network, source, sink, rc -> (double) rc.getCapacity());
 
 
-        return String.format(java.util.Locale.US, "source: %s, target: %s, maxFlowValue: %.2f",
+        return String.format(java.util.Locale.US, "source_stid: %s, target_stid: %s, maxFlowValue: %.2f",
                 source.getStationId(), sink.getStationId(), flow);
     }
 

@@ -90,11 +90,19 @@ public class MinimalBackboneNetwork {
             );
         }
 
-        System.out.println("\nTemporal Analysis:");
-        System.out.println("─────────────────────────────────────────────────────────");
-        System.out.printf("Computation time: %.3f ms%n", result.getComputationTimeMillis());
-        System.out.printf("Time complexity: O(E log E) where E=%d%n", network.getNumConnections());
-        System.out.println("Space complexity: O(V + E)");
+        System.out.println("\nAnalise Temporal:");
+        System.out.println("---------------------------------------------------------");
+        System.out.printf("Tempo de computacao: %.3f ms%n", result.getComputationTimeMillis());
+        System.out.printf("Complexidade temporal: O(E log E) = O(%d log %d) ~= O(%d)%n", 
+                network.getNumConnections(),
+                network.getNumConnections(),
+                (int)(network.getNumConnections() * Math.log(network.getNumConnections()) / Math.log(2)));
+        System.out.println("  Explicacao: O algoritmo de Kruskal ordena todas as arestas (E log E) e usa");
+        System.out.println("  Union-Find para detecao de ciclos com tempo amortizado quase constante.");
+        System.out.printf("Complexidade espacial: O(V + E) = O(%d + %d) = O(%d)%n",
+                network.getNumStations(), network.getNumConnections(),
+                network.getNumStations() + network.getNumConnections());
+        System.out.println("  Explicacao: Armazena lista de arestas e arrays parent/rank do Union-Find.");
     }
 
 }

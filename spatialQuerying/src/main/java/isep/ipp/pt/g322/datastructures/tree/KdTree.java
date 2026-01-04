@@ -46,21 +46,25 @@ public class KdTree {
         private void searchRegionRecursive(KdNode node, double latMin, double latMax, double lonMin, double lonMax,
                                            Boolean isCity, Boolean isMainStation, String country, List<Station> result) {
             if (node == null) return;
-            // Prune if node is outside region
-            if (node.lat < latMin || node.lat > latMax || node.lon < lonMin || node.lon > lonMax) {
-                // Check which side to recurse
-                if (node.axis == 0) { // latitude split
-                    if (node.lat > latMax) searchRegionRecursive(node.left, latMin, latMax, lonMin, lonMax, isCity, isMainStation, country, result);
-                    else if (node.lat < latMin) searchRegionRecursive(node.right, latMin, latMax, lonMin, lonMax, isCity, isMainStation, country, result);
-                } else { // longitude split
-                    if (node.lon > lonMax) searchRegionRecursive(node.left, latMin, latMax, lonMin, lonMax, isCity, isMainStation, country, result);
-                    else if (node.lon < lonMin) searchRegionRecursive(node.right, latMin, latMax, lonMin, lonMax, isCity, isMainStation, country, result);
+           // Verifica se o nó está fora da região
+            if (node.lat < latMin || node.lat > latMax || node.lon < lonMin || node.lon > lonMax) { 
+                //Verifica qual lado da árvore explorar, permitindo podar ramos desnecessários
+                if (node.axis == 0) { // divisão por latitude
+                    if (node.lat > latMax)//Nó está demasiado a norte
+                         searchRegionRecursive(node.left, latMin, latMax, lonMin, lonMax, isCity, isMainStation, country, result); //Pesquisa sul
+                    else if (node.lat < latMin)// Nó está demasiado a sul
+                         searchRegionRecursive(node.right, latMin, latMax, lonMin, lonMax, isCity, isMainStation, country, result); //Pesquisa norte
+                } else { //Divisão por longitude
+                    if (node.lon > lonMax)// Nó está demasiado a este
+                         searchRegionRecursive(node.left, latMin, latMax, lonMin, lonMax, isCity, isMainStation, country, result);//Pesquisa oeste
+                    else if (node.lon < lonMin)// Nó está demasiado a oeste
+                         searchRegionRecursive(node.right, latMin, latMax, lonMin, lonMax, isCity, isMainStation, country, result);//Pesquisa este
                 }
-                return;
+                return;// Sai, porque o nó não está na região
             }
-            // Node is inside region
+            // Nó está dentro da região
             for (Station s : node.stationsAtPoint) {
-                // Apply filters
+                // Aplica filtros
                 boolean matchesCity = (isCity == null) || (s.isCity() == isCity);
                 boolean matchesMain = (isMainStation == null) || (s.isMainStation() == isMainStation);
                 boolean matchesCountry = (country == null) || country.equalsIgnoreCase("all") || s.getCountry().equalsIgnoreCase(country);
@@ -69,17 +73,17 @@ public class KdTree {
                     result.add(s);
                 }
             }
-            // Recurse both sides
+            // Explora ambos os lados da árvore
             searchRegionRecursive(node.left, latMin, latMax, lonMin, lonMax, isCity, isMainStation, country, result);
             searchRegionRecursive(node.right, latMin, latMax, lonMin, lonMax, isCity, isMainStation, country, result);
         }
 
     public KdTree(List<Station> stations) {
-
+        //Agrupa as estações que estão no mesmo ponto (lat, lon)
         Map<String, List<Station>> grouped = stations.stream()
                 .collect(Collectors.groupingBy(s ->
                         s.getLatitude() + "#" + s.getLongitude()));
-
+        //Cria buckets de pontos com as estações correspondentes
         List<PointBucket> buckets = new ArrayList<>();
         for (var e : grouped.entrySet()) {
             List<Station> samePoint = e.getValue();
@@ -87,7 +91,7 @@ public class KdTree {
             samePoint.sort(Comparator.comparing(Station::getStation));
             buckets.add(new PointBucket(ref.getLatitude(), ref.getLongitude(), samePoint));
         }
-
+        //Constrói a árvore balanceada
         this.root = buildBalanced(buckets, 0);
     }
 
@@ -133,13 +137,14 @@ public class KdTree {
         if (pts == null || pts.isEmpty()) return null;
 
         int axis = depth % 2; // 0 = latitude, 1 = longitude
+        // Ordena os pontos pelo eixo atual
         pts.sort(axis == 0
                 ? Comparator.comparingDouble(p -> p.lat)
                 : Comparator.comparingDouble(p -> p.lon));
 
         int mid = pts.size() / 2;
         PointBucket median = pts.get(mid);
-
+            // Cria o nó e constrói recursivamente os subárvores esquerda e direita
         KdNode node = new KdNode(axis, median.lat, median.lon, median.stations);
         node.left = buildBalanced(pts.subList(0, mid), depth + 1);
         node.right = buildBalanced(pts.subList(mid + 1, pts.size()), depth + 1);

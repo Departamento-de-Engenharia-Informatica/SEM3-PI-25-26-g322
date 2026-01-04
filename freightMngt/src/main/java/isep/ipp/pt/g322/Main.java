@@ -84,15 +84,38 @@ public class Main {
                     }
                 }
 
-                System.out.println("\nComplexity Analysis: O(V * E^2) using Edmonds-Karp algorithm.");
+                System.out.println("\nAnalise Temporal:");
+                System.out.println("---------------------------------------------------------");
+                System.out.printf("Complexidade temporal: O(V x E^2) = O(%d x %d^2) = O(%d)%n",
+                        undirectedNetwork.getNumStations(),
+                        undirectedNetwork.getNumConnections(),
+                        undirectedNetwork.getNumStations() * 
+                        undirectedNetwork.getNumConnections() * 
+                        undirectedNetwork.getNumConnections());
+                System.out.println("  Explicacao: Edmonds-Karp encontra caminhos de aumento usando BFS (O(E) por caminho).");
+                System.out.println("  Maximo VxE/2 caminhos de aumento existem, resultando em O(VxE^2) total.");
+                System.out.printf("Complexidade espacial: O(V + E) = O(%d + %d) = O(%d)%n",
+                        undirectedNetwork.getNumStations(),
+                        undirectedNetwork.getNumConnections(),
+                        undirectedNetwork.getNumStations() + undirectedNetwork.getNumConnections());
+                System.out.println("  Explicacao: Armazena grafo residual e estruturas de dados do BFS.");
+                System.out.println("Algoritmo: Edmonds-Karp (Ford-Fulkerson com BFS)");
             } else {
                 System.out.println("Rede insuficiente para gerar 5 exemplos.");
             }
             System.out.println();
 
             // US15
+            System.out.println("\n--- US15: Risk-Aware Shortest Path ---");
             RiskAwareRouting riskRouting = new RiskAwareRouting(directedNetwork);
             RiskAwareRouting.RoutingResult routingResult = riskRouting.demonstrateRiskAwareRouting();
+            
+            // Print specification format
+            System.out.println("\nSpecification Format:");
+            System.out.println(riskRouting.formatAsSpecification(routingResult));
+            
+            // Print detailed analysis
+            System.out.println("\nDetailed Analysis:");
             riskRouting.printRoutingResult(routingResult);
 
         } catch (IOException e) {

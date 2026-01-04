@@ -98,12 +98,18 @@ public class HubCentralityAnalysis {
         System.out.println("  hubscore = 0.35 × betweenness + 0.35 × harmonic_closeness + 0.30 × strength");
         System.out.println("  (All metrics normalized to [0,1])");
 
-        System.out.println("\nTemporal Analysis:");
-        System.out.println("─────────────────────────────────────────────────────────");
-        System.out.printf("Computation time: %.3f ms%n", result.getComputationTimeMillis());
-        System.out.printf("Time complexity: O(V × (V + E)) where V=%d, E=%d%n",
-                network.getNumStations(), network.getNumConnections());
-        System.out.println("Space complexity: O(V²)");
+        System.out.println("\nAnalise Temporal:");
+        System.out.println("---------------------------------------------------------");
+        System.out.printf("Tempo de computacao: %.3f ms%n", result.getComputationTimeMillis());
+        System.out.printf("Complexidade temporal: O(V x (V + E)) = O(%d x (%d + %d)) = O(%d)%n",
+                network.getNumStations(), network.getNumStations(), network.getNumConnections(),
+                network.getNumStations() * (network.getNumStations() + network.getNumConnections()));
+        System.out.println("  Explicacao: Calcula caminhos mais curtos a partir de cada vertice (V iteracoes)");
+        System.out.println("  usando BFS/Dijkstra (V + E por iteracao) para betweenness e closeness.");
+        System.out.printf("Complexidade espacial: O(V^2) = O(%d^2) = O(%d)%n",
+                network.getNumStations(),
+                network.getNumStations() * network.getNumStations());
+        System.out.println("  Explicacao: Armazena matriz de distancias e contagens de caminhos para todos os pares.");
     }
 
     private String truncate(String s, int maxLen) {

@@ -1,11 +1,13 @@
 package isep.ipp.pt.g322;
 
+import isep.ipp.pt.g322.datastructures.graph.CentralityMetrics;
 import isep.ipp.pt.g322.datastructures.graph.MinimumSpanningTree;
 import isep.ipp.pt.g322.datastructures.graph.TopologicalSorting;
 import isep.ipp.pt.g322.model.DirectedUpgradePlan;
 import isep.ipp.pt.g322.model.RailConnection;
 import isep.ipp.pt.g322.model.RailwayNetwork;
 import isep.ipp.pt.g322.model.Station;
+import isep.ipp.pt.g322.service.HubCentralityAnalysis;
 import isep.ipp.pt.g322.service.MinimalBackboneNetwork;
 import isep.ipp.pt.g322.service.StationCSVLoader;
 
@@ -44,9 +46,16 @@ public class Main {
             try {
                 backbone.generateSVG("backbone.dot", "backbone.svg");
             } catch (IOException | InterruptedException e) {
-                System.err.println("\nNote: Could not generate SVG. Ensure Graphviz is installed.");
-                System.err.println("Install with: sudo apt install graphviz (Linux) or brew install graphviz (Mac)");
+                System.err.println("Error generating svg");
             }
+
+
+            // US13
+            HubCentralityAnalysis hubAnalysis = new HubCentralityAnalysis(undirectedNetwork);
+            CentralityMetrics.CentralityResult<Station> centralityResult = hubAnalysis.analyzeCentrality();
+            hubAnalysis.printCentralityResults(centralityResult);
+
+            hubAnalysis.exportToCSV(centralityResult, "hub_centrality.csv");
 
         } catch (IOException e) {
             System.err.println("Error loading network data: " + e.getMessage());

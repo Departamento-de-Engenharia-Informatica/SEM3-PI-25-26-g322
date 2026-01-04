@@ -2,12 +2,9 @@ package isep.ipp.pt.g322.datastructures.graph;
 
 import isep.ipp.pt.g322.datastructures.graph.matrix.MatrixGraph;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.LinkedList;
-import java.util.List;
+import java.util.*;
 import java.util.function.BinaryOperator;
+import java.util.function.Function;
 
 /**
  *
@@ -367,5 +364,109 @@ public class Algorithms {
         
         return resultGraph;
     }
+    /**
+     * Calcula o fluxo máximo entre source e sink usando Edmonds-Karp.
+     * Complexidade: O(V * E^2)
+     */
+    public static <V, E> double edmondsKarp(Graph<V, E> g, V source, V sink, Function<E, Double> capacityExtractor) {
+        if (g == null || source == null || sink == null || !g.validVertex(source) || !g.validVertex(sink)) {
+            return 0.0;
+        }
 
+        Map<V, Map<V, Double>> residualGraph = new HashMap<>();
+
+        // PASSO 1: Criar mapas vazios para TODOS os vértices primeiro
+        // Isto evita que o 'put' mais tarde apague arestas backward já criadas
+        for (V v : g.vertices()) {
+            residualGraph.put(v, new HashMap<>());
+        }
+
+        // PASSO 2: Preencher as arestas (Forward e Backward)
+        for (V v : g.vertices()) {
+            for (Edge<V, E> edge : g.outgoingEdges(v)) {
+                V adj = edge.getVDest();
+                double cap = capacityExtractor.apply(edge.getWeight());
+
+                // Forward edge (v -> adj)
+                residualGraph.get(v).put(adj, cap);
+
+                // Backward edge (adj -> v) inicializada a 0.0
+                // Como já criámos todos os mapas no Passo 1, get(adj) é seguro
+                residualGraph.get(adj).putIfAbsent(v, 0.0);
+            }
+        }
+
+        double maxFlow = 0.0;
+        Map<V, V> parent = new HashMap<>();
+
+        // 2. Loop Principal: Enquanto houver caminho de aumento (path com capacidade > 0)
+        while (hasAugmentingPath(g, source, sink, residualGraph, parent)) {
+
+            // 3. Encontrar a capacidade de gargalo (bottleneck) no caminho encontrado
+            double pathFlow = Double.MAX_VALUE;
+            V curr = sink;
+            while (!curr.equals(source)) {
+                V prev = parent.get(curr);
+                double capacity = residualGraph.get(prev).get(curr);
+                pathFlow = Math.min(pathFlow, capacity);
+                curr = prev;
+            }
+
+            // 4. Atualizar as capacidades residuais
+            curr = sink;
+            while (!curr.equals(source)) {
+                V prev = parent.get(curr);
+
+                // Subtrair fluxo na direção forward
+                double currentCap = residualGraph.get(prev).get(curr);
+                residualGraph.get(prev).put(curr, currentCap - pathFlow);
+
+                // Adicionar fluxo na direção backward
+                double backCap = residualGraph.get(curr).get(prev);
+                residualGraph.get(curr).put(prev, backCap + pathFlow);
+
+                curr = prev;
+            }
+
+            // 5. Somar ao fluxo total
+            maxFlow += pathFlow;
+        }
+
+        return maxFlow;
+    }
+
+    // Método auxiliar BFS para encontrar caminho no grafo residual
+    private static <V, E> boolean hasAugmentingPath(Graph<V, E> g, V source, V sink,
+                                                    Map<V, Map<V, Double>> residualGraph,
+                                                    Map<V, V> parent) {
+        parent.clear();
+        Queue<V> q = new LinkedList<>();
+        Set<V> visited = new HashSet<>();
+
+        q.add(source);
+        visited.add(source);
+        parent.put(source, null);
+
+        while (!q.isEmpty()) {
+            V u = q.poll();
+
+            // Verificar vizinhos no grafo residual (onde capacidade > 0)
+            Map<V, Double> neighbors = residualGraph.get(u);
+            if (neighbors == null) continue;
+
+            for (Map.Entry<V, Double> entry : neighbors.entrySet()) {
+                V v = entry.getKey();
+                double residualCap = entry.getValue();
+
+                if (!visited.contains(v) && residualCap > 0) {
+                    parent.put(v, u);
+                    visited.add(v);
+                    q.add(v);
+
+                    if (v.equals(sink)) return true; // Encontrámos o destino
+                }
+            }
+        }
+        return false;
+    }
 }

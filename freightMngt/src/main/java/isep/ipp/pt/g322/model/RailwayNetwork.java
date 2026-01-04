@@ -1,5 +1,6 @@
 package isep.ipp.pt.g322.model;
 
+import isep.ipp.pt.g322.datastructures.graph.Algorithms;
 import isep.ipp.pt.g322.datastructures.graph.map.*;
 
 import java.util.*;
@@ -125,6 +126,19 @@ public class RailwayNetwork {
     public int getNumConnections() {
         return network.numEdges();
     }
+
+
+    /**
+     * US14: Calcular fluxo máximo entre duas estações.
+     */
+    public String calculateMaxFlow(Station source, Station sink) {
+        double flow = Algorithms.edmondsKarp(this.network, source, sink, rc -> (double) rc.getCapacity());
+
+
+        return String.format(java.util.Locale.US, "source: %s, target: %s, maxFlowValue: %.2f",
+                source.getStationId(), sink.getStationId(), flow);
+    }
+
 
     @Override
     public String toString() {

@@ -1,3 +1,5 @@
+import isep.ipp.pt.g322.datastructures.graph.Algorithms;
+import isep.ipp.pt.g322.datastructures.graph.map.MapGraph;
 import isep.ipp.pt.g322.model.*;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -509,6 +511,141 @@ class RailwayNetworkTest {
             assertFalse(directedNetwork.addConnection("S001", "S002", connection1));
             assertEquals(0, directedNetwork.getNumStations());
             assertEquals(0, directedNetwork.getNumConnections());
+        }
+    }
+
+    @Nested
+    @DisplayName("Max Flow Test")
+    class MaxFlowTest {
+
+        private RailwayNetwork network;
+        private Station s1, s2, s3, s4, source, sink;
+
+        @BeforeEach
+        void setUp() {
+            // Criar uma rede direcionada (true)
+            network = new RailwayNetwork(true);
+
+            // Criar Estações (Vértices)
+            // (id, name, lat, lon, x, y)
+            source = new Station("S", "Source", 0, 0, 0, 0);
+            sink = new Station("T", "Sink", 0, 0, 0, 0);
+            s1 = new Station("A", "Station A", 0, 0, 0, 0);
+            s2 = new Station("B", "Station B", 0, 0, 0, 0);
+            s3 = new Station("C", "Station C", 0, 0, 0, 0);
+            s4 = new Station("D", "Station D", 0, 0, 0, 0);
+        }
+
+        /**
+         * Auxiliar para criar conexões rapidamente.
+         * RailConnection(distance, capacity, cost)
+         * Apenas a capacidade interessa para este teste.
+         */
+        private void addLink(Station from, Station to, int capacity) {
+            // Distância e custo são irrelevantes para o Max Flow, usamos valores dummy (10.0)
+            network.addConnection(from.getStationId(), to.getStationId(),
+                    new RailConnection(10.0, capacity, 10.0));
+        }
+
+        @Test
+        @DisplayName("Teste Básico: Ligação Direta")
+        void testDirectConnection() {
+            network.addStation(source);
+            network.addStation(sink);
+
+            // S -> T (Capacidade 100)
+            addLink(source, sink, 100);
+
+            String result = network.calculateMaxFlow(source, sink);
+
+            // Verifica se a string contém o valor esperado
+            // Formato esperado: "source: S, target: T, maxFlowValue: 100.00"
+            assertTrue(result.contains("maxFlowValue: 100.00"),
+                    "O fluxo deve ser igual à capacidade da única ligação (100)");
+        }
+
+        @Test
+        @DisplayName("Teste Clássico: Múltiplos Caminhos e Gargalos")
+        void testComplexFlow() {
+            // Cenário:
+            // S -> A (cap 10)
+            // S -> B (cap 10)
+            // A -> B (cap 2)  <-- Caminho transversal
+            // A -> T (cap 4)
+            // B -> T (cap 8)
+            // Aresta isolada D -> T (cap 5) para baralhar
+
+            network.addStation(source);
+            network.addStation(sink);
+            network.addStation(s1); // A
+            network.addStation(s2); // B
+            network.addStation(s4); // D
+
+            addLink(source, s1, 10); // S->A
+            addLink(source, s2, 10); // S->B
+            addLink(s1, s2, 2);      // A->B
+            addLink(s1, sink, 4);    // A->T
+            addLink(s2, sink, 8);    // B->T
+
+            // Aresta sem ligação à source (não deve contar)
+            addLink(s4, sink, 5);    // D->T
+
+            /* Análise do Fluxo Esperado:
+             * Caminho 1: S -> A -> T (Gargalo: 4). Restam: S->A(6), A->T(0). Fluxo = 4.
+             * Caminho 2: S -> A -> B -> T (Gargalo: 2). Restam: S->A(4), A->B(0), B->T(6). Fluxo += 2.
+             * Caminho 3: S -> B -> T (Gargalo: 6). Restam: S->B(4), B->T(0). Fluxo += 6.
+             * Total = 4 + 2 + 6 = 12.0
+             * (Nota: S->B tem cap 10, usámos 6. S->A tem cap 10, usámos 4+2=6).
+             */
+
+            String result = network.calculateMaxFlow(source, sink);
+
+            assertTrue(result.contains("maxFlowValue: 12.00"),
+                    "O fluxo máximo deve ser 12. Recebido: " + result);
+        }
+
+        @Test
+        @DisplayName("Teste Grafo Desconexo (Fluxo Zero)")
+        void testDisconnectedGraph() {
+            network.addStation(source);
+            network.addStation(sink);
+            network.addStation(s1);
+
+            // S -> A (100)
+            // T (sem conexões de entrada)
+            addLink(source, s1, 100);
+
+            String result = network.calculateMaxFlow(source, sink);
+
+            assertTrue(result.contains("maxFlowValue: 0.00"),
+                    "Não existe caminho entre S e T, fluxo deve ser 0");
+        }
+
+        @Test
+        @DisplayName("Teste com Ciclos")
+        void testGraphWithCycles() {
+            network.addStation(source);
+            network.addStation(sink);
+            network.addStation(s1);
+            network.addStation(s2);
+
+            // S -> A (10)
+            // A -> B (10)
+            // B -> A (10) <--- Ciclo
+            // B -> T (10)
+
+            addLink(source, s1, 10);
+            addLink(s1, s2, 10);
+            addLink(s2, s1, 10);
+            addLink(s2, sink, 10);
+
+            // O algoritmo Edmonds-Karp usa BFS (caminho mais curto em arestas),
+            // por isso não fica preso em ciclos e deve encontrar o caminho S->A->B->T.
+
+            String result = network.calculateMaxFlow(source, sink);
+
+            assertTrue(result.contains("maxFlowValue: 10.00"),
+                    "O algoritmo deve ignorar ciclos e encontrar o fluxo de 10");
         }
     }
 }

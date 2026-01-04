@@ -113,7 +113,7 @@ class KdTreeTest {
     void emptyListCreatesEmptyTree() {
         KdTree tree = new KdTree(Collections.emptyList());
         assertEquals(0, tree.size());
-        assertEquals(0, tree.height()); // ou 0/1 conforme o que o teu construtor faz
+        assertEquals(0, tree.height());
     }
 
     @Test

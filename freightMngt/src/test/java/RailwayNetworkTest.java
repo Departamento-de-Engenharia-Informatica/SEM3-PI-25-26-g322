@@ -565,15 +565,9 @@ class RailwayNetworkTest {
         }
 
         @Test
-        @DisplayName("Teste Clássico: Múltiplos Caminhos e Gargalos")
+        @DisplayName("Múltiplos Caminhos")
         void testComplexFlow() {
-            // Cenário:
-            // S -> A (cap 10)
-            // S -> B (cap 10)
-            // A -> B (cap 2)  <-- Caminho transversal
-            // A -> T (cap 4)
-            // B -> T (cap 8)
-            // Aresta isolada D -> T (cap 5) para baralhar
+
 
             network.addStation(source);
             network.addStation(sink);
@@ -587,16 +581,10 @@ class RailwayNetworkTest {
             addLink(s1, sink, 4);    // A->T
             addLink(s2, sink, 8);    // B->T
 
-            // Aresta sem ligação à source (não deve contar)
+
             addLink(s4, sink, 5);    // D->T
 
-            /* Análise do Fluxo Esperado:
-             * Caminho 1: S -> A -> T (Gargalo: 4). Restam: S->A(6), A->T(0). Fluxo = 4.
-             * Caminho 2: S -> A -> B -> T (Gargalo: 2). Restam: S->A(4), A->B(0), B->T(6). Fluxo += 2.
-             * Caminho 3: S -> B -> T (Gargalo: 6). Restam: S->B(4), B->T(0). Fluxo += 6.
-             * Total = 4 + 2 + 6 = 12.0
-             * (Nota: S->B tem cap 10, usámos 6. S->A tem cap 10, usámos 4+2=6).
-             */
+
 
             String result = network.calculateMaxFlow(source, sink);
 
@@ -611,8 +599,6 @@ class RailwayNetworkTest {
             network.addStation(sink);
             network.addStation(s1);
 
-            // S -> A (100)
-            // T (sem conexões de entrada)
             addLink(source, s1, 100);
 
             String result = network.calculateMaxFlow(source, sink);
@@ -629,10 +615,7 @@ class RailwayNetworkTest {
             network.addStation(s1);
             network.addStation(s2);
 
-            // S -> A (10)
-            // A -> B (10)
-            // B -> A (10) <--- Ciclo
-            // B -> T (10)
+
 
             addLink(source, s1, 10);
             addLink(s1, s2, 10);
@@ -640,7 +623,7 @@ class RailwayNetworkTest {
             addLink(s2, sink, 10);
 
             // O algoritmo Edmonds-Karp usa BFS (caminho mais curto em arestas),
-            // por isso não fica preso em ciclos e deve encontrar o caminho S->A->B->T.
+
 
             String result = network.calculateMaxFlow(source, sink);
 

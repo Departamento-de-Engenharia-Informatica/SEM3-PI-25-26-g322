@@ -391,7 +391,6 @@ public class Algorithms {
                 residualGraph.get(v).put(adj, cap);
 
                 // Backward edge (adj -> v) inicializada a 0.0
-                // Como já criámos todos os mapas no Passo 1, get(adj) é seguro
                 residualGraph.get(adj).putIfAbsent(v, 0.0);
             }
         }
@@ -402,7 +401,7 @@ public class Algorithms {
         // 2. Loop Principal: Enquanto houver caminho de aumento (path com capacidade > 0)
         while (hasAugmentingPath(g, source, sink, residualGraph, parent)) {
 
-            // 3. Encontrar a capacidade de gargalo (bottleneck) no caminho encontrado
+            // 3. Encontrar a capacidade de (bottleneck) no caminho encontrado
             double pathFlow = Double.MAX_VALUE;
             V curr = sink;
             while (!curr.equals(source)) {
@@ -450,7 +449,7 @@ public class Algorithms {
         while (!q.isEmpty()) {
             V u = q.poll();
 
-            // Verificar vizinhos no grafo residual (onde capacidade > 0)
+            // Verificar vizinhos no grafo (onde capacidade > 0)
             Map<V, Double> neighbors = residualGraph.get(u);
             if (neighbors == null) continue;
 
@@ -463,7 +462,7 @@ public class Algorithms {
                     visited.add(v);
                     q.add(v);
 
-                    if (v.equals(sink)) return true; // Encontrámos o destino
+                    if (v.equals(sink)) return true;
                 }
             }
         }

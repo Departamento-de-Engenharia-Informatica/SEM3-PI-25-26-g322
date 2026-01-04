@@ -39,8 +39,6 @@ public class DirectedUpgradePlan {
      * @param result the topological sorting result
      */
     public void printUpgradePlan(TopologicalSorting.TopologicalResult<Station> result) {
-        System.out.println("\n=== Directed Line Upgrade Plan ===\n");
-
         if (!result.hasCycles()) {
             // graph without cycles - print order
             System.out.println("✓ No cycles detected - Valid upgrade ordering exists\n");

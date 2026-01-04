@@ -1,9 +1,12 @@
 package isep.ipp.pt.g322;
 
+import isep.ipp.pt.g322.datastructures.graph.MinimumSpanningTree;
 import isep.ipp.pt.g322.datastructures.graph.TopologicalSorting;
 import isep.ipp.pt.g322.model.DirectedUpgradePlan;
+import isep.ipp.pt.g322.model.RailConnection;
 import isep.ipp.pt.g322.model.RailwayNetwork;
 import isep.ipp.pt.g322.model.Station;
+import isep.ipp.pt.g322.service.MinimalBackboneNetwork;
 import isep.ipp.pt.g322.service.StationCSVLoader;
 
 import java.io.IOException;
@@ -11,21 +14,40 @@ import java.io.IOException;
 public class Main {
     public static void main(String[] args) throws IOException {
         try {
-            RailwayNetwork network = new RailwayNetwork(true);
+            // US11 - directed graph
+            RailwayNetwork directedNetwork = new RailwayNetwork(true);
+            StationCSVLoader loader = new StationCSVLoader(directedNetwork);
+            int stations1 = loader.loadStationsFromCSV("stations.csv");
+            int connections1 = loader.loadConnectionsFromCSV("lines.csv");
 
-            StationCSVLoader loader = new StationCSVLoader(network);
-            int stations = loader.loadStationsFromCSV("stations.csv");
-            int connections = loader.loadConnectionsFromCSV("lines.csv");
+            System.out.println("Network loaded: " + stations1 + " stations, " +
+                    connections1 + " connections\n");
 
-            System.out.println("Network loaded: " + stations + " stations, " +
-                    connections + " connections");
-
-            //US 11
-            DirectedUpgradePlan upgradePlan = new DirectedUpgradePlan(network);
-
+            DirectedUpgradePlan upgradePlan = new DirectedUpgradePlan(directedNetwork);
             TopologicalSorting.TopologicalResult<Station> result = upgradePlan.computeUpgradePlan();
-
             upgradePlan.printUpgradePlan(result);
+
+            // US12 - undirected graph as per requirements
+            RailwayNetwork undirectedNetwork = new RailwayNetwork(false);
+            StationCSVLoader loader2 = new StationCSVLoader(undirectedNetwork);
+            int stations2 = loader2.loadStationsFromCSV("stations.csv");
+            int connections2 = loader2.loadConnectionsFromCSV("lines.csv");
+
+            System.out.println("Network loaded: " + stations2 + " stations, " +
+                    connections2 + " connections\n");
+
+            MinimalBackboneNetwork backbone = new MinimalBackboneNetwork(undirectedNetwork);
+            MinimumSpanningTree.MSTResult<Station, RailConnection> mstResult = backbone.computeBackbone();
+            backbone.printBackboneResults(mstResult);
+
+            backbone.exportToDOT(mstResult, "backbone.dot");
+            try {
+                backbone.generateSVG("backbone.dot", "backbone.svg");
+            } catch (IOException | InterruptedException e) {
+                System.err.println("\nNote: Could not generate SVG. Ensure Graphviz is installed.");
+                System.err.println("Install with: sudo apt install graphviz (Linux) or brew install graphviz (Mac)");
+            }
+
         } catch (IOException e) {
             System.err.println("Error loading network data: " + e.getMessage());
             e.printStackTrace();

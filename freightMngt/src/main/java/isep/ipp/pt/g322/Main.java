@@ -9,6 +9,7 @@ import isep.ipp.pt.g322.model.RailwayNetwork;
 import isep.ipp.pt.g322.model.Station;
 import isep.ipp.pt.g322.service.HubCentralityAnalysis;
 import isep.ipp.pt.g322.service.MinimalBackboneNetwork;
+import isep.ipp.pt.g322.service.RiskAwareRouting;
 import isep.ipp.pt.g322.service.StationCSVLoader;
 
 import java.io.IOException;
@@ -56,6 +57,11 @@ public class Main {
             hubAnalysis.printCentralityResults(centralityResult);
 
             hubAnalysis.exportToCSV(centralityResult, "hub_centrality.csv");
+
+            // US15
+            RiskAwareRouting riskRouting = new RiskAwareRouting(directedNetwork);
+            RiskAwareRouting.RoutingResult routingResult = riskRouting.demonstrateRiskAwareRouting();
+            riskRouting.printRoutingResult(routingResult);
 
         } catch (IOException e) {
             System.err.println("Error loading network data: " + e.getMessage());

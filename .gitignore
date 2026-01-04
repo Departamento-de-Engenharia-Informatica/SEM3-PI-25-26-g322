@@ -28,3 +28,7 @@ replay_pid*
 
 # Maven/Java build output
 **/target/
+
+# Generated analysis files
+backbone.dot
+hub_centrality.csv

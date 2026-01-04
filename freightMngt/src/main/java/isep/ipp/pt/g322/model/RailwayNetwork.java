@@ -47,6 +47,20 @@ public class RailwayNetwork {
     }
 
     /**
+     * Adds a station to the network with individual parameters.
+     * Convenience method for creating and adding a station.
+     *
+     * @param stationId unique station identifier
+     * @param name station name
+     * @param latitude geographic latitude
+     * @param longitude geographic longitude
+     * @return true if the station was added, false if it already exists
+     */
+    public boolean addStation(String stationId, String name, double latitude, double longitude) {
+        return addStation(new Station(stationId, name, latitude, longitude, 0.0, 0.0));
+    }
+
+    /**
      * Adds a rail connection between two stations.
      * If the stations don't exist, they are NOT added automatically.
      *
@@ -68,6 +82,22 @@ public class RailwayNetwork {
         }
 
         return network.addEdge(station1, station2, connection);
+    }
+
+    /**
+     * Adds a rail connection between two stations with individual parameters.
+     * Convenience method that creates a RailConnection.
+     *
+     * @param stationId1 the first station ID
+     * @param stationId2 the second station ID
+     * @param distance distance in kilometers
+     * @param capacity maximum flow of trains per day
+     * @param cost combined metric (can be negative for bonuses)
+     * @return true if the connection was added, false otherwise
+     */
+    public boolean addConnection(String stationId1, String stationId2, 
+                                 double distance, int capacity, double cost) {
+        return addConnection(stationId1, stationId2, new RailConnection(distance, capacity, cost));
     }
 
     /**
